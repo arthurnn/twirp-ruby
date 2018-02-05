@@ -30,7 +30,7 @@ module Twirp
 	class Error
 
     attr_reader :code # Symbol for the Twirp Error Code (:internal, :not_found, :permission_denied, etc.)
-    attr_reader :msg # String with the error message.  
+    attr_reader :msg  # String with the error message.  
     attr_reader :meta # Optional hash with error metadata. Both keys and values MUST be Strings.
 
     def initialize(code, msg, meta=nil)
@@ -47,21 +47,24 @@ module Twirp
       })
     end
 
-private
+    private
 
-  def validate_code(code)
-    if !code.is_a? Symbol
-      raise ArgumentError.new("Twirp::Error code must be a Symbol, but it is a #{code.class.to_s}")
+    def validate_code(code)
+      if !code.is_a? Symbol
+        raise ArgumentError.new("Twirp::Error code must be a Symbol, but it is a #{code.class.to_s}")
+      end
+      if !ERROR_CODES_TO_HTTP_STATUS.has_key? code
+        raise ArgumentError.new("Twirp::Error code :#{code} is invalid. Expected one of #{ERROR_CODES.inspect}")
+      end
+      code
     end
-    if !ERROR_CODES_TO_HTTP_STATUS.has_key? code
-      raise ArgumentError.new("Twirp::Error code :#{code} is invalid. Expected one of #{ERROR_CODES.inspect}")
-    end
-  end
 
-  def validate_meta_only_strings(meta)
-    return if meta == nil # ok, it is optional
-    meta.each do |k, v|
-      # ... TODO
+    def validate_meta(meta)
+      return if meta == nil # ok, it is optional
+      meta.each do |k, v|
+        # ... TODO
+      end
+      meta
     end
 
   end
