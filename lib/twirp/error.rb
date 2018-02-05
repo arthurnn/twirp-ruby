@@ -29,22 +29,31 @@ module Twirp
   # Twirp::Error represents a valid error from a Twirp service
 	class Error
 
-    attr_reader :code # Symbol for the Twirp Error Code (:internal, :not_found, :permission_denied, etc.)
-    attr_reader :msg  # String with the error message.  
-    attr_reader :meta # Optional hash with error metadata. Both keys and values MUST be Strings.
-
+    # Initialize a Twirp::Error
+    # The code MUST be one of the valid ERROR_CODES Symbols (e.g. :internal, :not_found, :permission_denied ...).
+    # The msg is a String with the error message.
+    # The meta is optional error metadata, if included it MUST be a Hash with String keys and values.
     def initialize(code, msg, meta=nil)
       @code = validate_code(code)
       @msg = msg.to_s
       @meta = validate_meta(meta)
     end
 
+    attr_reader :code
+    attr_reader :msg
+    def meta; @meta || {}; end
+
+    def as_json
+      h = {
+        code: @code,
+        msg: @msg,
+      }
+      h[:meta] = @meta if @meta
+      h
+    end
+
     def to_json
-      JSON.encode({
-        :code => @code,
-        :msg => @msg,
-        :meta => @meta
-      })
+      JSON.encode(as_json)
     end
 
     private
@@ -60,9 +69,14 @@ module Twirp
     end
 
     def validate_meta(meta)
-      return if meta == nil # ok, it is optional
+      return nil if !meta
+      if !meta.is_a? Hash
+        raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
+      end
       meta.each do |k, v|
-        # ... TODO
+        if !k.is_a?(String) || !v.is_a?(String)
+          raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values")
+        end
       end
       meta
     end
