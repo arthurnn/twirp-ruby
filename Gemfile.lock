@@ -1,0 +1,20 @@
+PATH
+  remote: .
+  specs:
+    twirp (0.0.1)
+      google-protobuf (>= 3.0.0)
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    google-protobuf (3.5.1.2)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  bundler (>= 1)
+  twirp!
+
+BUNDLED WITH
+   1.14.6
