@@ -1,5 +1,5 @@
 module Twirp
-  class Server
+  class Service
     @@rpcs = {}
 
     def initialize(svc)
