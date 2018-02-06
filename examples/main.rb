@@ -9,5 +9,4 @@ class HaberdasherImplementation
 end
 
 svc = HaberdasherImplementation.new()
-url_map = Rack::URLMap.new HaberdasherService::PATH_PREFIX => HaberdasherService.new(svc).handler
-Rack::Handler::WEBrick.run url_map
+Rack::Handler::WEBrick.run HaberdasherService.new(svc).handler

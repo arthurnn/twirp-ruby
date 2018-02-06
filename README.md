@@ -59,15 +59,14 @@ class HaberdasherImplementation
 end
 
 svc = HaberdasherImplementation.new()
-url_map = Rack::URLMap.new HaberdasherService::PATH_PREFIX => HaberdasherService.new(svc).handler
-Rack::Handler::WEBrick.run url_map
+Rack::Handler::WEBrick.run HaberdasherService.new(svc).handler
 ```
 
 You can also mount onto a rails service:
 ```
 App::Application.routes.draw do
   svc = HaberdasherImplementation.new()
-  mount HaberdasherServer.new(svc).handler, at: HaberdasherServer::PATH_PREFIX
+  mount HaberdasherService.new(svc).handler, at: HaberdasherService::PATH_PREFIX
 end
 ```
 

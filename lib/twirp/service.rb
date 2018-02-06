@@ -15,7 +15,7 @@ module Twirp
 
     def route_request(req)
       # Parse url to get method names
-      method_name = req.path_info[1..-1]
+      method_name = req.fullpath[self.class::PATH_PREFIX.length+1..-1]
 
       # Get req/res types from @@rpcs
       rpc = @@rpcs[method_name.to_sym]
