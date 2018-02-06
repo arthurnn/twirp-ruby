@@ -1,0 +1,14 @@
+syntax = "proto3";
+package examples;
+
+service Haberdasher {
+    rpc HelloWorld(HelloWorldRequest) returns (HelloWorldResponse);
+}
+
+message HelloWorldRequest {
+    string name = 1;
+}
+
+message HelloWorldResponse {
+    string message = 1;
+}
