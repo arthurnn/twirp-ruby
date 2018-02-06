@@ -34,13 +34,13 @@ module Twirp
 
     def serve_json(req, method_name, request_class, response_class)
       params = request_class.decode_json(req.body.read)
-      resp = @svc.send(method_name.underscore, params)
+      resp = @svc.send(method_name, params)
       self.serve_success_json(response_class.encode_json(resp))
     end
 
     def serve_proto(req, method_name, request_class, response_class)
       params = request_type.decode(req.body.read)
-      resp = @svc.send(method_name.underscore, params)
+      resp = @svc.send(method_name, params)
       self.serve_success_proto(response_class.encode(resp))
     end
 
