@@ -41,7 +41,23 @@ module Twirp
 
     attr_reader :code
     attr_reader :msg
-    def meta; @meta || {}; end
+    
+    def meta(key)
+      @meta ||= {}
+      @meta[key]
+    end
+
+    def add_meta(key, value)
+      validate_meta_key_value(key, value)
+      @meta ||= {}
+      @meta[key] = value
+    end
+
+    def delete_meta(key)
+      @meta ||= {}
+      @meta.delete(key.to_s)
+      @meta = nil if @meta.size == 0
+    end
 
     def as_json
       h = {
@@ -73,12 +89,16 @@ module Twirp
       if !meta.is_a? Hash
         raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
       end
-      meta.each do |k, v|
-        if !k.is_a?(String) || !v.is_a?(String)
-          raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values")
-        end
+      meta.each do |key, value| 
+        validate_meta_key_value(key, value)        
       end
       meta
+    end
+
+    def validate_meta_key_value(key, value)
+      if !key.is_a?(String) || !value.is_a?(String)
+        raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values")
+      end
     end
 
   end
