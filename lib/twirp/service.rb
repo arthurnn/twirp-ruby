@@ -29,7 +29,14 @@ module Twirp
     # Instantiate a new service with a handler.
     # A handler implements each rpc method as a regular object method call.
     def initialize(handler)
-      @handler = handler # TODO: validate that handler responds to all expected methods (report good error message if not)
+      # validate that the handler reponds to all expected methods
+      self.class.rpcs.each do |method_name, rpc|
+        if !handler.respond_to? rpc[:handler_method]
+          raise ArgumentError.new("Handler must respond to .#{rpc[:handler_method]}(req) in order to handle the message #{method_name}.")
+        end
+      end
+
+      @handler = handler
     end
 
     # Register a before hook (not implemented)
