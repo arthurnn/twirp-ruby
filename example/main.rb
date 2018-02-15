@@ -8,5 +8,5 @@ class HaberdasherHandler
     end
 end
 
-svc = HaberdasherHandler.new()
-Rack::Handler::WEBrick.run Proc.new {|env| Example::HaberdasherService.new(svc).call(env)}
+handler = HaberdasherHandler.new()
+Rack::Handler::WEBrick.run Example::HaberdasherService.new(handler)

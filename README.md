@@ -58,15 +58,15 @@ class HaberdasherHandler
     end
 end
 
-svc = HaberdasherHandler.new()
-Rack::Handler::WEBrick.run Proc.new {|env| Example::HaberdasherService.new(svc).call(env)}
+handler = HaberdasherHandler.new()
+Rack::Handler::WEBrick.run Example::HaberdasherService.new(handler)
 ```
 
 You can also mount onto a rails service:
 ```ruby
 App::Application.routes.draw do
-  svc = HaberdasherImplementation.new()
-  mount Proc.new {|env| Example::HaberdasherService.new(svc).call(env)}, at: HaberdasherService::PATH_PREFIX
+  handler = HaberdasherHandler.new()
+  mount Example::HaberdasherService.new(handler), at: HaberdasherService::PATH_PREFIX
 end
 ```
 
@@ -82,5 +82,5 @@ Run `ruby main.rb` to start the server on port 8080:
   --header 'content-type: application/json' \
   --data '{
 	"name": "World"
-}'
+  }'
 ```
