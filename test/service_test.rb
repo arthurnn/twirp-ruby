@@ -23,6 +23,9 @@ end
 # This is wha the twirp_ruby protoc plugin code generator would produce.
 module FooPkg
   class FooService < Twirp::Service
+    package "foopkg"
+    service "FooService"
+
     rpc "DoFoo", DoFooRequest, DoFooResponse, handler_method: :do_foo
   end
 end
@@ -33,6 +36,10 @@ class FooHandler
   def do_foo(req)
     {bar: "Hello #{req.foo}"}
   end
+end
+
+# Twirp Service with no package and no rpc methods.
+class EmptyService < Twirp::Service
 end
 
 class ServiceTest < Minitest::Test
@@ -46,11 +53,29 @@ class ServiceTest < Minitest::Test
       handler_method: :do_foo,
     }, FooPkg::FooService.rpcs["DoFoo"])
   end
+
+  def test_package_service_getters
+    assert_equal "foopkg", FooPkg::FooService.package_name
+    assert_equal "FooService", FooPkg::FooService.service_name
+    assert_equal "foopkg.FooService", FooPkg::FooService.path_prefix
+
+    assert_equal "", EmptyService.package_name # defaults to empty string
+    assert_equal "EmptyService", EmptyService.service_name # defaults to class name
+    assert_equal "EmptyService", EmptyService.path_prefix # with no package is just the service name
+  end
   
   def test_initialize_service
     # simple initialization
     svc = FooPkg::FooService.new(FooHandler.new)
+    assert svc.respond_to?(:call) # so it is a Proc that can be used as Rack middleware
+
+    empty_svc = EmptyService.new(nil) # an empty service does not need a handler
     assert svc.respond_to?(:call)
+  end
+
+  def test_path_prefix
+    svc = FooPkg::FooService.new(FooHandler.new)
+    assert_equal "foopkg.FooService", svc.path_prefix
   end
 
   def test_initialize_fails_on_invalid_handlers

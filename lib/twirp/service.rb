@@ -2,28 +2,66 @@ module Twirp
 
   class Service
 
-    # Configure service routing to handle rpc calls.
-    def self.rpc(method_name, request_class, response_class, opts)
-      if !request_class.is_a?(Class)
-        raise ArgumentError.new("request_class must be a Protobuf Message class")
-      end 
-      if !response_class.is_a?(Class)
-        raise ArgumentError.new("response_class must be a Protobuf Message class")
-      end
-      if !opts || !opts[:handler_method]
-        raise ArgumentError.new("opts[:handler_method] is mandatory")
+    class << self
+
+      # Configure service package name.
+      def package(package_name)
+        @package_name = package_name.to_s
       end
 
-      @rpcs ||= {}
-      @rpcs[method_name.to_s] = {
-        request_class: request_class,
-        response_class: response_class,
-        handler_method: opts[:handler_method],
-      }
-    end
+      # Configure service name
+      def service(service_name)
+        @service_name = service_name.to_s
+      end
 
-    def self.rpcs
-      @rpcs || {}
+      # Configure service routing to handle rpc calls.
+      def rpc(method_name, request_class, response_class, opts)
+        if !request_class.is_a?(Class)
+          raise ArgumentError.new("request_class must be a Protobuf Message class")
+        end 
+        if !response_class.is_a?(Class)
+          raise ArgumentError.new("response_class must be a Protobuf Message class")
+        end
+        if !opts || !opts[:handler_method]
+          raise ArgumentError.new("opts[:handler_method] is mandatory")
+        end
+
+        @rpcs ||= {}
+        @rpcs[method_name.to_s] = {
+          request_class: request_class,
+          response_class: response_class,
+          handler_method: opts[:handler_method],
+        }
+      end
+
+      # Get configured package name as String.
+      # And empty value means that there's no package
+      def package_name
+        @package_name.to_s
+      end
+
+      # Get configured service name as String.
+      # If not configured, it defaults to the class name
+      def service_name
+        sname = @service_name.to_s
+        sname.empty? ? self.name : sname
+      end
+
+      # Get configured metadata for rpc methods
+      def rpcs
+        @rpcs || {}
+      end
+
+      # Path prefix that should be used to route requests to this service.
+      # It is based on the package and service name, in the expected Twirp URL format.
+      # The full URL would be: {BaseURL}/path_prefix/{MethodName}
+      def path_prefix
+        if package_name.empty?
+          service_name # e.g. "Haberdasher"
+        else
+          "#{package_name}.#{service_name}" # e.g. "the.haberdasher.pkg.Haberdasher"
+        end
+      end
     end
 
     # Instantiate a new service with a handler.
@@ -83,6 +121,11 @@ module Twirp
       return [200, {'Content-Type' => content_type}, [encoded_resp]]
 
       # TODO: add recue for any error in the method, wrap with Twith error
+    end
+
+    # path prefix that can be used to mount this service
+    def path_prefix
+      self.class.path_prefix
     end
 
   private
