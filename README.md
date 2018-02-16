@@ -54,19 +54,21 @@ require_relative 'gen/haberdasher_twirp.rb'
 
 class HaberdasherHandler
     def hello_world(req)
-        return Example::HelloWorldResponse.new(message: "Hello #{req.name}")
+        return {message: "Hello #{req.name}"}
     end
 end
 
 handler = HaberdasherHandler.new()
-Rack::Handler::WEBrick.run Example::HaberdasherService.new(handler)
+service = Example::HaberdasherService.new(handler)
+Rack::Handler::WEBrick.run service
 ```
 
 You can also mount onto a rails service:
 ```ruby
 App::Application.routes.draw do
   handler = HaberdasherHandler.new()
-  mount Example::HaberdasherService.new(handler), at: HaberdasherService::PATH_PREFIX
+  service = Example::HaberdasherService.new(handler)
+  mount service, at: HaberdasherService::PATH_PREFIX
 end
 ```
 
