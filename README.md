@@ -4,12 +4,12 @@ Twirp services and clients in Ruby.
 
 ### Installation
 Install the `twirp` gem:
-```
+```sh
 ➜ gem install twirp
 ```
 
 Use `go get` to install the ruby_twirp protoc plugin:
-```
+```sh
 ➜ go get github.com/cyrusaf/ruby-twirp/protoc-gen-twirp_ruby
 ```
 
@@ -18,13 +18,13 @@ You will also need:
    version 3+.
 
 ### Haberdasher Example
-See the `examples/` folder for the final product.
+See the `example/` folder for the final product.
 
 First create a basic `.proto` file:
-```
+```protobuf
 // haberdasher.proto
 syntax = "proto3";
-package examples;
+package example;
 
 service Haberdasher {
     rpc HelloWorld(HelloWorldRequest) returns (HelloWorldResponse);
@@ -41,46 +41,48 @@ message HelloWorldResponse {
 ```
 
 Run the `protoc` binary to generate `gen/haberdasher_pb.rb` and `gen/haberdasher_twirp.rb`.
-```
+```sh
 ➜ protoc --proto_path=. ./haberdasher.proto --ruby_out=gen --twirp_ruby_out=gen
 ```
 
 Write an implementation of our haberdasher service and attach to a rack server:
-```
+```ruby
 # main.rb
 require 'rack'
 require_relative 'gen/haberdasher_pb.rb'
 require_relative 'gen/haberdasher_twirp.rb'
 
-class HaberdasherImplementation
-    def HelloWorld(req)
-        return Examples::HelloWorldResponse.new(message: "Hello #{req.name}")
+class HaberdasherHandler
+    def hello_world(req)
+        return {message: "Hello #{req.name}"}
     end
 end
 
-svc = HaberdasherImplementation.new()
-Rack::Handler::WEBrick.run HaberdasherService.new(svc).handler
+handler = HaberdasherHandler.new()
+service = Example::HaberdasherService.new(handler)
+Rack::Handler::WEBrick.run service
 ```
 
 You can also mount onto a rails service:
-```
+```ruby
 App::Application.routes.draw do
-  svc = HaberdasherImplementation.new()
-  mount HaberdasherService.new(svc).handler, at: HaberdasherService::PATH_PREFIX
+  handler = HaberdasherHandler.new()
+  service = Example::HaberdasherService.new(handler)
+  mount service, at: HaberdasherService::PATH_PREFIX
 end
 ```
 
 Run `ruby main.rb` to start the server on port 8080:
-```
+```sh
 ➜ ruby main.rb
 ```
 
 `curl` your server to get a response:
-```
+```sh
 ➜ curl --request POST \
   --url http://localhost:8080/twirp/examples.Haberdasher/HelloWorld \
   --header 'content-type: application/json' \
   --data '{
 	"name": "World"
-}'
+  }'
 ```
