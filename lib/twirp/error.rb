@@ -29,7 +29,7 @@ module Twirp
   ERROR_CODES = ERROR_CODES_TO_HTTP_STATUS.keys
 
   # Twirp::Error represents a valid error from a Twirp service
-	class Error < StandardError
+	class Error
 
     # Wrap an arbitrary error as a Twirp :internal
     def self.InternalWith(err)

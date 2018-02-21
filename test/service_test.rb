@@ -180,8 +180,8 @@ class ServiceTest < Minitest::Test
     assert_equal Example::Hat.new(inches: 0, color: ""), Example::Hat.decode(body[0])
   end
 
-  # Handler should be able to return Twirp::Exception values, that will trigger error responses
-  def test_handler_returns_twirp_exception
+  # Handler should be able to return Twirp::Error values, that will trigger error responses
+  def test_handler_returns_twirp_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
       return Twirp::Error.new(:invalid_argument, "I don't like that size")
     end)
@@ -199,7 +199,7 @@ class ServiceTest < Minitest::Test
   # Handler should be able to raise a Twirp::Exception, that will trigger error responses
   def test_handler_raises_twirp_exception
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
-      raise Twirp::Error.new(:invalid_argument, "I don't like that size")
+      raise Twirp::Exception.new(:invalid_argument, "I don't like that size")
     end)
 
     env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)

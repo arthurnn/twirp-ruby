@@ -96,11 +96,8 @@ module Twirp
         resp = @handler.send(rpc[:handler_method], proto_req)
         return rack_response_from_handler(rpc, content_type, resp)
 
-      rescue Twirp::Error => twerr
+      rescue Twirp::Exception => twerr
         error_response(twerr)
-      rescue StandardError => err
-        puts err.backtrace
-        error_response(Twirp::Error.InternalWith(err))
       end
     end
 
