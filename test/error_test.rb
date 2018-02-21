@@ -34,6 +34,29 @@ end
 
 class TestTwirpError < Minitest::Test
 
+  def test_constructors # Try out some constructors
+    err = Twirp.internal_error "woops"
+    assert_equal :internal, err.code
+    assert_equal "woops", err.msg
+    assert_equal({}, err.meta) # empty
+
+    err = Twirp.not_found_error "not here", who: "Waldo"
+    assert_equal :not_found, err.code
+    assert_equal "not here", err.msg
+    assert_equal({who: "Waldo"}, err.meta)
+
+    err = Twirp.invalid_argument_error("required", "argument" => "size")
+    assert_equal :invalid_argument, err.code
+    assert_equal "required", err.msg
+    assert_equal({"argument" => "size"}, err.meta) # empty
+  end
+
+  def test_invalid_constructor # Make sure that only supported codes are implemented (prevent bad metaprogramming)
+    assert_raises NoMethodError do 
+      Twirp::invalid_code_error "should fail"
+    end
+  end
+
   def test_new_with_valid_code_and_a_message
     err = Twirp::Error.new(:internal, "woops")
     assert_equal :internal, err.code
@@ -43,23 +66,17 @@ class TestTwirpError < Minitest::Test
 
   def test_new_with_valid_metadata
     err = Twirp::Error.new(:internal, "woops", "meta" => "data", "for this" => "error")
-    assert_equal err.meta["meta"], "data"
+    assert_equal "data", err.meta["meta"]
     assert_equal "error", err.meta["for this"] 
     assert_nil err.meta["something else"]
-  end
 
-  def test_invalid_code
-    assert_raises ArgumentError do 
-      Twirp::Error.new(:invalid_code, "woops")
-    end
+    err = Twirp::Error.new(:internal, "woops", meta: "data")
+    assert_equal err.meta[:meta], "data"
+    assert_nil err.meta["meta"] # no symbol/string multiaccess for now
   end
 
   def test_invalid_metadata
     Twirp::Error.new(:internal, "woops") # ensure the base case doesn't error
-
-    assert_raises ArgumentError do 
-      Twirp::Error.new(:internal, "woops", non_string: "metadata")
-    end
 
     assert_raises ArgumentError do 
       Twirp::Error.new(:internal, "woops", "string key" => :non_string_value)

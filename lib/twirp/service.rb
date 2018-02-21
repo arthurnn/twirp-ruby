@@ -1,3 +1,5 @@
+require "json"
+
 module Twirp
   class Service
 
@@ -51,18 +53,18 @@ module Twirp
         @rpcs || {}
       end
 
-      # Path prefix that should be used to route requests to this service.
-      # It is based on the package and service name, in the expected Twirp URL format.
-      # The full URL would be: {BaseURL}/path_prefix/{MethodName}.
-      def path_prefix
-        "/twirp/#{service_full_name}" # e.g. "twirp/Haberdasher"
-      end
-
       # Service full name uniquelly identifies the service.
       # It is the service name prefixed by the package name,
       # for example "my.package.Haberdasher", or "Haberdasher" (if no package).
       def service_full_name
         package_name.empty? ? service_name : "#{package_name}.#{service_name}"
+      end
+
+      # Path prefix that should be used to route requests to this service.
+      # It is based on the package and service name, in the expected Twirp URL format.
+      # The full URL would be: {BaseURL}/path_prefix/{MethodName}.
+      def path_prefix
+        "/twirp/#{service_full_name}" # e.g. "twirp/Haberdasher"
       end
 
     end # class << self
@@ -78,10 +80,6 @@ module Twirp
       end
       @handler = handler
     end
-    # Register a before hook (not implemented)
-    def before(&block)
-      # TODO... and also after hooks
-    end
 
     # Rack app handler.
     def call(env)
@@ -94,7 +92,10 @@ module Twirp
       proto_req = decode_request(rpc[:request_class], content_type, req.body.read)
       begin
         resp = @handler.send(rpc[:handler_method], proto_req)
-        return rack_response_from_handler(rpc, content_type, resp)
+        return error_response(resp) if resp.is_a? Twirp::Error
+        encoded_resp = encode_response_from_handler(rpc, content_type, resp)
+        success_response(content_type, encoded_resp)
+
       rescue Twirp::Exception => twerr
         error_response(twerr)
       end
@@ -107,6 +108,7 @@ module Twirp
     def service_full_name
       self.class.service_full_name
     end
+
 
   private
 
@@ -134,23 +136,6 @@ module Twirp
       return rpc, content_type, nil
     end
 
-    def rack_response_from_handler(rpc, content_type, resp)
-      if resp.is_a? Twirp::Error
-        return error_response(resp)
-      end
-
-      if resp.is_a? Hash # allow handlers to return just the attributes
-        resp = rpc[:response_class].new(resp)
-      end
-
-      if !resp # allow handlers to return nil or false as a reponse with zero-values
-        resp = rpc[:response_class].new
-      end
-
-      encoded_resp = encode_response(rpc[:response_class], content_type, resp)
-      success_response(content_type, encoded_resp)
-    end
-
     def decode_request(request_class, content_type, body)
       case content_type
       when "application/json"
@@ -160,12 +145,24 @@ module Twirp
       end
     end
 
-    def encode_response(response_class, content_type, resp)
+    def encode_response_from_handler(rpc, content_type, resp)
+      proto_class = rpc[:response_class]
+
+      # Handlers may return just the attributes
+      if resp.is_a? Hash
+        resp = proto_class.new(resp)
+      end
+
+      # Handlers may return nil, that should be converted to zero-values
+      if !resp
+        resp = proto_class.new
+      end
+
       case content_type
       when "application/json"
-        response_class.encode_json(resp)
+        proto_class.encode_json(resp)
       when "application/protobuf"
-        response_class.encode(resp)
+        proto_class.encode(resp)
       end
     end
 
@@ -175,14 +172,11 @@ module Twirp
 
     def error_response(twirp_error)
       status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twirp_error.code]
-      headers = {'Content-Type' => 'application/json'} 
-      resp_body = twirp_error.to_json
-      [status, headers, [resp_body]]
+      [status, {'Content-Type' => 'application/json'}, [JSON.generate(twirp_error.to_h)]]
     end
 
     def bad_route_error(msg, req)
-      meta_invalid_route = "#{req.request_method} #{req.fullpath}"
-      Twirp::Error.new(:bad_route, msg, "twirp_invalid_route" => meta_invalid_route)
+      Twirp.bad_route_error msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
     end
 
   end

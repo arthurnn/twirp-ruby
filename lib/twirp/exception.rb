@@ -15,7 +15,7 @@ module Twirp
     def code; @twerr.code; end
     def msg; @twerr.msg; end
     def meta; @twerr.meta; end
-    def to_json; @twerr.to_json; end
-    def as_json; @twerr.as_json; end
+    def to_h; @twerr.to_h; end
+    def to_s; @twerr.to_s; end
   end
 end

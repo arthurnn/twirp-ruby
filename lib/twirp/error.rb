@@ -1,5 +1,3 @@
-require 'json'
-
 module Twirp
 
   # Valid Twirp error codes and their mapping to related HTTP status.
@@ -28,90 +26,72 @@ module Twirp
   # List of all valid error codes in Twirp
   ERROR_CODES = ERROR_CODES_TO_HTTP_STATUS.keys
 
-  # Twirp::Error represents a valid error from a Twirp service
+  def valid_error_code?(code)
+    ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
+  end
+
+  # Error constructors: `Twirp.{code}_error(msg, meta=nil)` for each error code.
+  # Use this constructors to ensure the errors have valid error codes. Example:
+  #     Twirp.internal_error("boom")
+  #     Twirp.invalid_argument_error("foo is mandatory", argument: "foo")
+  #     Twirp.permission_denied_error("thou shall not pass!", target: "Balrog")
+  ERROR_CODES.each do |code|
+    define_singleton_method "#{code}_error" do |msg, meta=nil|
+      Error.new(code, msg, meta)
+    end
+  end
+
+  # Wrap another error as an :internal Twirp::Error
+  def internal_error_with(err)
+    internal_error err.message, cause: err.class.name
+  end
+
+  # Twirp::Error represents an error response from a Twirp service.
+  # Twirp::Error is not an Exception to be raised, but a value to be returned
+  # by service handlers and received by clients.
 	class Error
 
-    # Wrap an arbitrary error as a Twirp :internal
-    def self.InternalWith(err)
-      self.new :internal, err.message, "cause" => err.class.name
-    end
+    attr_reader :code, :msg, :meta
 
     # Initialize a Twirp::Error
-    # The code MUST be one of the valid ERROR_CODES Symbols (e.g. :internal, :not_found, :permission_denied ...).
+    # The code must be one of the valid ERROR_CODES Symbols (e.g. :internal, :not_found, :permission_denied ...).
     # The msg is a String with the error message.
-    # The meta is optional error metadata, if included it MUST be a Hash with String keys and values.
+    # The meta is optional error metadata, if included it must be a Hash with String values.
     def initialize(code, msg, meta=nil)
-      @code = validate_code(code)
+      @code = code.to_sym
       @msg = msg.to_s
       @meta = validate_meta(meta)
     end
 
-    attr_reader :code
-    attr_reader :msg
-    
-    def meta(key)
-      @meta ||= {}
-      @meta[key]
-    end
-
-    def add_meta(key, value)
-      validate_meta_key_value(key, value)
-      @meta ||= {}
-      @meta[key] = value
-    end
-
-    def delete_meta(key)
-      @meta ||= {}
-      @meta.delete(key.to_s)
-      @meta = nil if @meta.size == 0
-    end
-
-    def as_json
+    def to_h
       h = {
         code: @code,
         msg: @msg,
       }
-      h[:meta] = @meta if @meta
+      h[:meta] = @meta unless @meta.empty?
       h
     end
 
-    def to_json
-      JSON.generate(as_json)
-    end
-
     def to_s
-      "Twirp::Error code:#{code} msg:#{msg.inspect} meta:#{meta.inspect}"
+      "Twirp::Error #{code}: #{msg.inspect} meta:#{meta.inspect}"
     end
 
-    private
 
-    def validate_code(code)
-      if !code.is_a? Symbol
-        raise ArgumentError.new("Twirp::Error code must be a Symbol, but it is a #{code.class.to_s}")
-      end
-      if !ERROR_CODES_TO_HTTP_STATUS.has_key? code
-        raise ArgumentError.new("Twirp::Error code :#{code} is invalid. Expected one of #{ERROR_CODES.inspect}")
-      end
-      code
-    end
+  private
 
     def validate_meta(meta)
-      return nil if !meta
+      return {} if !meta
+
       if !meta.is_a? Hash
         raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
       end
       meta.each do |key, value| 
-        validate_meta_key_value(key, value)        
+        if !value.is_a?(String)
+          raise ArgumentError.new("Twirp::Error meta values must be Strings, but key #{key.inspect} has the value <#{value.class.to_s}> #{value.inspect}")
+        end
       end
       meta
     end
 
-    def validate_meta_key_value(key, value)
-      if !key.is_a?(String) || !value.is_a?(String)
-        raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values. Invalid key<#{key.class}>: #{key.inspect}, value<#{value.class}>: #{value.inspect}")
-      end
-    end
-
   end
-
 end
