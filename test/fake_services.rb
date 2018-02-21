@@ -13,11 +13,14 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
     optional :inches, :int32, 1
     optional :color, :string, 2
   end
+  add_message "example.Empty" do
+  end
 end
 
 module Example
   Size = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.Size").msgclass
   Hat = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.Hat").msgclass
+  Empty = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.Empty").msgclass
 end
 
 # Twirp Service.

@@ -55,11 +55,14 @@ module Twirp
       # It is based on the package and service name, in the expected Twirp URL format.
       # The full URL would be: {BaseURL}/path_prefix/{MethodName}.
       def path_prefix
-        if package_name.empty?
-          service_name # e.g. "Haberdasher"
-        else
-          "#{package_name}.#{service_name}" # e.g. "the.haberdasher.pkg.Haberdasher"
-        end
+        "/twirp/#{service_full_name}" # e.g. "twirp/Haberdasher"
+      end
+
+      # Service full name uniquelly identifies the service.
+      # It is the service name prefixed by the package name,
+      # for example "my.package.Haberdasher", or "Haberdasher" (if no package).
+      def service_full_name
+        package_name.empty? ? service_name : "#{package_name}.#{service_name}"
       end
 
     end # class << self
@@ -68,21 +71,13 @@ module Twirp
     # Instantiate a new service with a handler.
     # The handler must implemnt all rpc methods required by this service.
     def initialize(handler)
-      # validate that the handler reponds to all expected methods
       self.class.rpcs.each do |method_name, rpc|
         if !handler.respond_to? rpc[:handler_method]
-          raise ArgumentError.new("Handler must respond to .#{rpc[:handler_method]}(req) in order to handle the message #{method_name}.")
+          raise ArgumentError.new("Handler must respond to .#{rpc[:handler_method]}(input) in order to handle the message #{method_name}.")
         end
       end
-
       @handler = handler
     end
-
-    # path prefix that can be used to mount this service
-    def path_prefix
-      self.class.path_prefix
-    end
-
     # Register a before hook (not implemented)
     def before(&block)
       # TODO... and also after hooks
@@ -91,46 +86,63 @@ module Twirp
     # Rack app handler.
     def call(env)
       req = Rack::Request.new(env)
-
-      if req.request_method != "POST"
-        return error_response(bad_route_error("Only POST method is allowed", req))
+      rpc, content_type, bad_route = parse_rack_request(req)
+      if bad_route
+        return error_response(bad_route)
       end
       
-      method_name = req.fullpath.split("/").last
-      rpc_method = self.class.rpcs[method_name]
-      if !rpc_method
-        return error_response(bad_route_error("rpc method not found: #{method_name.inspect}", req))
-      end
-
-      request_class = rpc_method[:request_class]
-      response_class = rpc_method[:response_class]
-
-      content_type = req.env["CONTENT_TYPE"]
-      req_msg = decode_request(rpc_method[:request_class], content_type, req.body.read)
-      if !req_msg
-        return error_response(bad_route_error("unexpected Content-Type: #{content_type.inspect}", req))
-      end
-
-      # Handle Twirp request
-      # TODO: wrap with begin-rescue block
-      resp_msg = @handler.send(rpc_method[:handler_method], req_msg)
+      input_msg = decode_request(rpc[:request_class], content_type, req.body.read)
+      resp_msg = @handler.send(rpc[:handler_method], input_msg)
 
       if resp_msg.is_a? Twirp::Error
         return error_response(resp_msg)
       end
 
       if resp_msg.is_a? Hash # allow handlers to respond with just the attributes
-        resp_msg = response_class.new(resp_msg)
+        resp_msg = rpc[:response_class].new(resp_msg)
       end
-      encoded_resp = encode_response(response_class, content_type, resp_msg)
+      encoded_resp = encode_response(rpc[:response_class], content_type, resp_msg)
 
-      return [200, {'Content-Type' => content_type}, [encoded_resp]]
+      return success_response(content_type, encoded_resp)
 
       # TODO: add rescue for any error in the method, wrap with Twith error
     end
 
+    def path_prefix
+      self.class.path_prefix
+    end
+
+    def service_full_name
+      self.class.service_full_name
+    end
 
   private
+
+    def parse_rack_request(req)
+      if req.request_method != "POST"
+        return nil, nil, bad_route_error("HTTP request method must be POST", req)
+      end
+
+      content_type = req.env["CONTENT_TYPE"]
+      if content_type != "application/json" && content_type != "application/protobuf"
+        return nil, nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of \"application/json\" or \"application/protobuf\"", req)
+      end
+      
+      path_parts = req.fullpath.split("/")
+      if path_parts.size < 4 || path_parts[-2] != self.service_full_name || path_parts[-3] != "twirp"
+        return nil, nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", req)
+      end
+      method_name = path_parts[-1]
+
+      rpc = self.class.rpcs[method_name]
+      if !rpc
+        return nil, nil, bad_route_error("rpc method not found: #{method_name.inspect}", req)
+      end
+
+      
+
+      return rpc, content_type, nil
+    end
 
     def decode_request(request_class, content_type, body)
       case content_type
@@ -148,6 +160,10 @@ module Twirp
       when "application/protobuf"
         response_class.encode(resp)
       end
+    end
+
+    def success_response(content_type, encoded_resp)
+      [200, {'Content-Type' => content_type}, [encoded_resp]]
     end
 
     def error_response(twirp_error)
