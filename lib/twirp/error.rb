@@ -1,3 +1,5 @@
+require 'json'
+
 module Twirp
 
   # Valid Twirp error codes and their mapping to related HTTP status.
@@ -69,7 +71,7 @@ module Twirp
     end
 
     def to_json
-      JSON.encode(as_json)
+      JSON.generate(as_json)
     end
 
     private
