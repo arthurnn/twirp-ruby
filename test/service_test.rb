@@ -141,6 +141,45 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
+  # Handler should be able to return an instance of the proto message
+  def test_handler_returns_a_proto_message
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      Example::Hat.new(inches: 11)
+    end)
+
+    env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(env)
+
+    assert_equal 200, status
+    assert_equal Example::Hat.new(inches: 11, color: ""), Example::Hat.decode(body[0])
+  end
+
+  # Handler should be able to return a hash with attributes
+  def test_handler_returns_hash_attributes
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      {inches: 11}
+    end)
+
+    env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(env)
+
+    assert_equal 200, status
+    assert_equal Example::Hat.new(inches: 11, color: ""), Example::Hat.decode(body[0])
+  end
+
+  # Handler should be able to return nil, as a message with all zero-values
+  def test_handler_returns_nil
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      nil
+    end)
+
+    env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(env)
+
+    assert_equal 200, status
+    assert_equal Example::Hat.new(inches: 0, color: ""), Example::Hat.decode(body[0])
+  end
+
 
   # Test Helpers
   # ------------

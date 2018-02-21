@@ -91,21 +91,9 @@ module Twirp
         return error_response(bad_route)
       end
       
-      input_msg = decode_request(rpc[:request_class], content_type, req.body.read)
-      resp_msg = @handler.send(rpc[:handler_method], input_msg)
-
-      if resp_msg.is_a? Twirp::Error
-        return error_response(resp_msg)
-      end
-
-      if resp_msg.is_a? Hash # allow handlers to respond with just the attributes
-        resp_msg = rpc[:response_class].new(resp_msg)
-      end
-      encoded_resp = encode_response(rpc[:response_class], content_type, resp_msg)
-
-      return success_response(content_type, encoded_resp)
-
-      # TODO: add rescue for any error in the method, wrap with Twith error
+      proto_req = decode_request(rpc[:request_class], content_type, req.body.read)
+      resp = @handler.send(rpc[:handler_method], proto_req)
+      return rack_response_from_handler(rpc, content_type, resp)
     end
 
     def path_prefix
@@ -139,9 +127,24 @@ module Twirp
         return nil, nil, bad_route_error("rpc method not found: #{method_name.inspect}", req)
       end
 
-      
-
       return rpc, content_type, nil
+    end
+
+    def rack_response_from_handler(rpc, content_type, resp)
+      if resp.is_a? Twirp::Error
+        return error_response(resp)
+      end
+
+      if resp.is_a? Hash # allow handlers to return just the attributes
+        resp = rpc[:response_class].new(resp)
+      end
+
+      if !resp # allow handlers to return nil or false as a reponse with zero-values
+        resp = rpc[:response_class].new
+      end
+
+      encoded_resp = encode_response(rpc[:response_class], content_type, resp)
+      success_response(content_type, encoded_resp)
     end
 
     def decode_request(request_class, content_type, body)

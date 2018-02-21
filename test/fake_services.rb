@@ -35,16 +35,21 @@ module Example
 end
 
 # Example service handler.
-# This would be provided by the developer as implementation for the service.
+# It would be provided by the developer as implementation for the service.
 class HaberdasherHandler
-  def make_hat(size)
-    if size.inches < 0
-      return Twirp::Error.new(:invalid_argument, "I can't make a hat that small!", argument: "inches")
+  # This fake can optionally be initialized with a block for the make_hat implementation.
+  def initialize(&block)
+    if block_given?
+      @make_hat_block = block
+    else # default implementation
+      @make_hat_block = Proc.new do |size|
+        {inches: size.inches, color: "white"}
+      end
     end
-    {
-      inches: size.inches,
-      color: "white",
-    }
+  end
+
+  def make_hat(size)
+    @make_hat_block.call(size)
   end
 end
 
