@@ -85,15 +85,23 @@ module Twirp
 
     # Rack app handler.
     def call(env)
-      req = Rack::Request.new(env)
-      rpc, content_type, bad_route = parse_rack_request(req)
-      if bad_route
-        return error_response(bad_route)
+      begin
+        req = Rack::Request.new(env)
+        rpc, content_type, bad_route = parse_rack_request(req)
+        if bad_route
+          return error_response(bad_route)
+        end
+        
+        proto_req = decode_request(rpc[:request_class], content_type, req.body.read)
+        resp = @handler.send(rpc[:handler_method], proto_req)
+        return rack_response_from_handler(rpc, content_type, resp)
+
+      rescue Twirp::Error => twerr
+        error_response(twerr)
+      rescue StandardError => err
+        puts err.backtrace
+        error_response(Twirp::Error.InternalWith(err))
       end
-      
-      proto_req = decode_request(rpc[:request_class], content_type, req.body.read)
-      resp = @handler.send(rpc[:handler_method], proto_req)
-      return rack_response_from_handler(rpc, content_type, resp)
     end
 
     def path_prefix

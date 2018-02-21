@@ -29,7 +29,12 @@ module Twirp
   ERROR_CODES = ERROR_CODES_TO_HTTP_STATUS.keys
 
   # Twirp::Error represents a valid error from a Twirp service
-	class Error
+	class Error < StandardError
+
+    # Wrap an arbitrary error as a Twirp :internal
+    def self.InternalWith(err)
+      self.new :internal, err.message, "cause" => err.class.name
+    end
 
     # Initialize a Twirp::Error
     # The code MUST be one of the valid ERROR_CODES Symbols (e.g. :internal, :not_found, :permission_denied ...).
@@ -74,6 +79,10 @@ module Twirp
       JSON.generate(as_json)
     end
 
+    def to_s
+      "Twirp::Error code:#{code} msg:#{msg.inspect} meta:#{meta.inspect}"
+    end
+
     private
 
     def validate_code(code)
@@ -99,7 +108,7 @@ module Twirp
 
     def validate_meta_key_value(key, value)
       if !key.is_a?(String) || !value.is_a?(String)
-        raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values")
+        raise ArgumentError.new("Twirp::Error meta must be a Hash with String keys and values. Invalid key<#{key.class}>: #{key.inspect}, value<#{value.class}>: #{value.inspect}")
       end
     end
 

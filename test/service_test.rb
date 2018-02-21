@@ -133,7 +133,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type'] # error messages are always JSON, even for Protobuf requests
+    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
       "code" => 'bad_route', 
       "msg" => 'Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}',
@@ -178,6 +178,38 @@ class ServiceTest < Minitest::Test
 
     assert_equal 200, status
     assert_equal Example::Hat.new(inches: 0, color: ""), Example::Hat.decode(body[0])
+  end
+
+  # Handler should be able to return Twirp::Exception values, that will trigger error responses
+  def test_handler_returns_twirp_exception
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      return Twirp::Error.new(:invalid_argument, "I don't like that size")
+    end)
+
+    env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
+    status, headers, body = svc.call(env)
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
+    assert_equal({
+      "code" => 'invalid_argument', 
+      "msg" => "I don't like that size",
+    }, JSON.parse(body[0]))
+  end
+
+  # Handler should be able to raise a Twirp::Exception, that will trigger error responses
+  def test_handler_raises_twirp_exception
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      raise Twirp::Error.new(:invalid_argument, "I don't like that size")
+    end)
+
+    env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
+    status, headers, body = svc.call(env)
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
+    assert_equal({
+      "code" => 'invalid_argument', 
+      "msg" => "I don't like that size",
+    }, JSON.parse(body[0]))
   end
 
 
