@@ -87,14 +87,14 @@ class TestTwirpError < Minitest::Test
     end
   end
 
-  def test_as_json
+  def test_to_h
     # returns a hash with attributes
     err = Twirp::Error.new(:internal, "err msg", "key" => "val")
-    assert_equal({code: :internal, msg: "err msg", meta: {"key" => "val"}}, err.as_json)
+    assert_equal({code: :internal, msg: "err msg", meta: {"key" => "val"}}, err.to_h)
   
     # skips meta if not included 
     err = Twirp::Error.new(:internal, "err msg")
-    assert_equal({code: :internal, msg: "err msg"}, err.as_json)
+    assert_equal({code: :internal, msg: "err msg"}, err.to_h)
   end
 end
 
