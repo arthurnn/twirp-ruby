@@ -3,9 +3,8 @@ require 'twirp'
 
 module Example
   class HaberdasherService < Twirp::Service
-    PATH_PREFIX = "/twirp/example.Haberdasher"
     package "example"
     service "Haberdasher"
-    rpc :HelloWorld, HelloWorldRequest, HelloWorldResponse, handler_method: 'hello_world'
+    rpc "HelloWorld", HelloWorldRequest, HelloWorldResponse, handler_method: "hello_world"
   end
 end

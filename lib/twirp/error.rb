@@ -41,7 +41,7 @@ module Twirp
     end
   end
 
-  # Wrap another error as an :internal Twirp::Error
+  # Wrap another error as a Twirp::Error :internal.
   def internal_error_with(err)
     internal_error err.message, cause: err.class.name
   end
@@ -73,7 +73,7 @@ module Twirp
     end
 
     def to_s
-      "Twirp::Error #{code}: #{msg.inspect} meta:#{meta.inspect}"
+      "<Twirp::Error code:#{code.inspect} msg:#{msg.inspect} meta:#{meta.inspect}>"
     end
 
 

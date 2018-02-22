@@ -79,17 +79,16 @@ func (g *generator) generateFile(file *descriptor.FileDescriptorProto) *plugin.C
 	}
 	for i, service := range file.Service {
 		serviceName := serviceName(service)
-		g.P(fmt.Sprintf("%sclass %sService < Twirp::Service", indent, serviceName))
-		g.P(fmt.Sprintf(`%s  PATH_PREFIX = "/twirp/%s.%s"`, indent, pkgName, serviceName))
+		g.P(fmt.Sprintf("%sclass %sService < Twirp::Service", indent, CamelCase(serviceName)))
 		if pkgName != "" {
 			g.P(fmt.Sprintf(`%s  package "%s"`, indent, pkgName))
 		}
-		g.P(fmt.Sprintf(`%s  service "%s"`, indent, CamelCase(serviceName)))
+		g.P(fmt.Sprintf(`%s  service "%s"`, indent, serviceName))
 		for _, method := range service.GetMethod() {
 			methName := methodName(method)
 			inputName := methodInputName(method)
 			outputName := methodOutputName(method)
-			g.P(fmt.Sprintf(`%s  rpc :%s, %s, %s, handler_method: "%s"`,
+			g.P(fmt.Sprintf(`%s  rpc "%s", %s, %s, handler_method: "%s"`,
 				indent, methName, inputName, outputName, SnakeCase(methName)))
 		}
 		g.P(fmt.Sprintf(`%send`, indent))

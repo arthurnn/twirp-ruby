@@ -6,32 +6,27 @@ module Twirp
     class << self
 
       # Configure service package name.
-      def package(package_name)
-        @package_name = package_name.to_s
+      def package(name)
+        @package_name = name.to_s
       end
 
       # Configure service name.
-      def service(service_name)
-        @service_name = service_name.to_s
+      def service(name)
+        @service_name = name.to_s
       end
 
       # Configure service routing to handle rpc calls.
-      def rpc(method_name, request_class, response_class, opts)
-        if !request_class.is_a?(Class)
-          raise ArgumentError.new("request_class must be a Protobuf Message class")
-        end 
-        if !response_class.is_a?(Class)
-          raise ArgumentError.new("response_class must be a Protobuf Message class")
-        end
-        if !opts || !opts[:handler_method]
-          raise ArgumentError.new("opts[:handler_method] is mandatory")
-        end
+      def rpc(rpc_method, input_class, output_class, opts)
+        raise ArgumentError.new("input_class must be a Protobuf Message class") unless input_class.is_a?(Class) 
+        raise ArgumentError.new("output_class must be a Protobuf Message class") unless output_class.is_a?(Class)
+        raise ArgumentError.new("opts[:handler_method] is mandatory") unless opts && opts[:handler_method]
 
         @rpcs ||= {}
-        @rpcs[method_name.to_s] = {
-          request_class: request_class,
-          response_class: response_class,
-          handler_method: opts[:handler_method],
+        @rpcs[rpc_method.to_s] = {
+          rpc_method: rpc_method.to_s,
+          input_class: input_class,
+          output_class: output_class,
+          handler_method: opts[:handler_method].to_s,
         }
       end
 
@@ -81,19 +76,64 @@ module Twirp
       @handler = handler
     end
 
+    # Setup a before hook on this service.
+    # Before hooks are called after the request has been successfully routed to a method.
+    # If multiple hooks are added, they are run in the same order as declared.
+    # The hook is a block that accepts 3 parameters:
+    #  * rpc_method: rpc method as defined in the proto file.
+    #  * input: Protobuf message object that will be passed to the handler method.
+    #  * request: the raw Rack::Request
+    #
+    # If the before hook returns a Twirp::Error then the request is inmediatly
+    # canceled, the handler method is not called, and that error is returned instead.
+    # Any other return value from the hook is ignored (nil or otherwise).
+    # If an excetion is raised from the hook, it will be handled just like exceptions
+    # raised from handler methods: they will trigger the error hook and wrapped with a Twirp::Error.
+    #
+    # Usage Example:
+    #
+    #    handler = ExampleHandler.new
+    #    svc = ExampleService.new(handler)
+    #
+    #    svc.before do |rpc_method, input, request|
+    #      if request.get_header "Force-Error"
+    #        return Twirp.canceled_error("failed as recuested sir")
+    #      end
+    #      request.env["example_service.before_succeed"] = true # can be later accessed on the handler method
+    #    end
+    #
+    #    svc.before handler.method(:before) # you can also delegate the hook to the handler (to reuse helpers, etc)
+    #
+    def before(&block)
+      (@before_hooks ||= []) << block
+    end
+
+    # Hook code that is run after method calls that return a Twirp::Error,
+    # or raise an exception ...
+    def error(&block)
+      # TODO ...
+    end
+
     # Rack app handler.
     def call(env)
-      req = Rack::Request.new(env)
-      rpc, content_type, bad_route = parse_rack_request(req)
+      request = Rack::Request.new(env)
+      rpc, content_type, bad_route = route_request(request)
       if bad_route
         return error_response(bad_route)
       end
-        
-      proto_req = decode_request(rpc[:request_class], content_type, req.body.read)
+      input = decode_request(rpc[:input_class], content_type, request.body.read)
+
       begin
-        resp = @handler.send(rpc[:handler_method], proto_req)
-        return error_response(resp) if resp.is_a? Twirp::Error
-        encoded_resp = encode_response_from_handler(rpc, content_type, resp)
+        if twerr = run_before_hooks(rpc[:rpc_method], input, request)
+          error_response(twerr)
+        end
+
+        handler_output = @handler.send(rpc[:handler_method], input)
+        if handler_output.is_a? Twirp::Error
+          return error_response(handler_output)
+        end
+
+        encoded_resp = encode_response_from_handler(rpc, content_type, handler_output)
         success_response(content_type, encoded_resp)
 
       rescue Twirp::Exception => twerr
@@ -112,41 +152,51 @@ module Twirp
 
   private
 
-    def parse_rack_request(req)
-      if req.request_method != "POST"
-        return nil, nil, bad_route_error("HTTP request method must be POST", req)
+    def route_request(request)
+      if request.request_method != "POST"
+        return nil, nil, bad_route_error("HTTP request method must be POST", request)
       end
 
-      content_type = req.env["CONTENT_TYPE"]
+      content_type = request.env["CONTENT_TYPE"]
       if content_type != "application/json" && content_type != "application/protobuf"
-        return nil, nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of \"application/json\" or \"application/protobuf\"", req)
+        return nil, nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of \"application/json\" or \"application/protobuf\"", request)
       end
       
-      path_parts = req.fullpath.split("/")
+      path_parts = request.fullpath.split("/")
       if path_parts.size < 4 || path_parts[-2] != self.service_full_name || path_parts[-3] != "twirp"
-        return nil, nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", req)
+        return nil, nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", request)
       end
       method_name = path_parts[-1]
 
       rpc = self.class.rpcs[method_name]
       if !rpc
-        return nil, nil, bad_route_error("rpc method not found: #{method_name.inspect}", req)
+        return nil, nil, bad_route_error("rpc method not found: #{method_name.inspect}", request)
       end
 
       return rpc, content_type, nil
     end
 
-    def decode_request(request_class, content_type, body)
+    def decode_request(input_class, content_type, body)
       case content_type
       when "application/json"
-        request_class.decode_json(body)
+        input_class.decode_json(body)
       when "application/protobuf"
-        request_class.decode(body)
+        input_class.decode(body)
       end
     end
 
+    # Before hooks are run in order after the request has been successfully routed to a Method.
+    def run_before_hooks(rpc_method, input, request)
+      return unless @before_hooks
+      @before_hooks.each do |hook|
+        twerr = hook.call(rpc_method, input, request)
+        return twerr if twerr && twerr.is_a?(Twirp::Error)
+      end
+      nil
+    end
+
     def encode_response_from_handler(rpc, content_type, resp)
-      proto_class = rpc[:response_class]
+      proto_class = rpc[:output_class]
 
       # Handlers may return just the attributes
       if resp.is_a? Hash

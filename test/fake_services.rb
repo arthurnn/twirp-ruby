@@ -37,19 +37,12 @@ end
 # Example service handler.
 # It would be provided by the developer as implementation for the service.
 class HaberdasherHandler
-  # This fake can optionally be initialized with a block for the make_hat implementation.
   def initialize(&block)
-    if block_given?
-      @make_hat_block = block
-    else # default implementation
-      @make_hat_block = Proc.new do |size|
-        {inches: size.inches, color: "white"}
-      end
-    end
+    @block = block if block_given?
   end
 
   def make_hat(size)
-    @make_hat_block.call(size)
+    @block && @block.call(size)
   end
 end
 

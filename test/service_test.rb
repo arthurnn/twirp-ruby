@@ -12,9 +12,10 @@ class ServiceTest < Minitest::Test
   def test_rpc_methods
     assert_equal 1, Example::Haberdasher.rpcs.size
     assert_equal({
-      request_class: Example::Size,
-      response_class: Example::Hat,
-      handler_method: :make_hat,
+      rpc_method: "MakeHat",
+      input_class: Example::Size,
+      output_class: Example::Hat,
+      handler_method: "make_hat",
     }, Example::Haberdasher.rpcs["MakeHat"])
   end
 
@@ -183,7 +184,7 @@ class ServiceTest < Minitest::Test
   # Handler should be able to return Twirp::Error values, that will trigger error responses
   def test_handler_returns_twirp_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
-      return Twirp::Error.new(:invalid_argument, "I don't like that size")
+      return Twirp.invalid_argument_error "I don't like that size"
     end)
 
     env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
@@ -212,6 +213,39 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
+  # TODO: Error handler
+  # def test_handler_raises_standard_error
+  #   svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
+  #     raise "random error"
+  #   end)
+  # end
+
+  def test_before_hook_simple
+    handler_method_called = false
+    handler = HaberdasherHandler.new do |size|
+      handler_method_called = true
+      nil
+    end
+
+    called_with = nil
+    svc = Example::Haberdasher.new(handler)
+    svc.before do |rpc_method, input, request|
+      called_with = {rpc_method: rpc_method, input: input, request: request}
+    end
+
+    env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
+    status, _, _ = svc.call(env)
+
+    refute_nil called_with, "the before hook was called"
+    assert_equal "MakeHat", called_with[:rpc_method]
+    assert_equal Example::Size.new(inches: 10), called_with[:input]
+    assert_equal "application/json", called_with[:request].get_header('CONTENT_TYPE') # the request is accessible
+
+    assert handler_method_called, "the handler method was called"
+    assert_equal 200, status, "response is successful"
+  end
+
+
 
   # Test Helpers
   # ------------
@@ -229,7 +263,9 @@ class ServiceTest < Minitest::Test
   end
 
   def haberdasher_service
-    Example::Haberdasher.new(HaberdasherHandler.new)
+    Example::Haberdasher.new(HaberdasherHandler.new do |size|
+      {inches: size.inches, color: "white"}
+    end)
   end
 end
 
