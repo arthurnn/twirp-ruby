@@ -26,7 +26,7 @@ module Twirp
           rpc_method: rpc_method.to_s,
           input_class: input_class,
           output_class: output_class,
-          handler_method: opts[:handler_method].to_s,
+          handler_method: opts[:handler_method].to_sym,
         }
       end
 
@@ -68,38 +68,43 @@ module Twirp
     # Instantiate a new service with a handler.
     # The handler must implemnt all rpc methods required by this service.
     def initialize(handler)
-      self.class.rpcs.each do |method_name, rpc|
-        if !handler.respond_to? rpc[:handler_method]
-          raise ArgumentError.new("Handler must respond to .#{rpc[:handler_method]}(input) in order to handle the message #{method_name}.")
+      @handler = handler
+      self.class.rpcs.each do |rpc_method, rpc|
+        m = rpc[:handler_method]
+        if !handler.respond_to?(m)
+          raise ArgumentError.new("Handler must respond to .#{m}(input) in order to handle the rpc method #{rpc_method.inspect}.")
+        end
+        if handler.method(m).arity != 2
+          raise ArgumentError.new("Hanler method #{m} must accept exactly 2 arguments (input, env).")
         end
       end
-      @handler = handler
     end
 
     # Setup a before hook on this service.
     # Before hooks are called after the request has been successfully routed to a method.
     # If multiple hooks are added, they are run in the same order as declared.
-    # The hook is a block that accepts 3 parameters:
-    #  * rpc_method: rpc method as defined in the proto file.
+    # The hook is a block that accepts 3 parameters: (rpc, input, request)
+    #  * rpc: rpc data for the current method with info like rpc[:rpc_method] and rpc[:input_class].
     #  * input: Protobuf message object that will be passed to the handler method.
-    #  * request: the raw Rack::Request
+    #  * env: the Twirp environment object that will be passed to the handler method.
     #
     # If the before hook returns a Twirp::Error then the request is inmediatly
     # canceled, the handler method is not called, and that error is returned instead.
     # Any other return value from the hook is ignored (nil or otherwise).
-    # If an excetion is raised from the hook, it will be handled just like exceptions
-    # raised from handler methods: they will trigger the error hook and wrapped with a Twirp::Error.
+    # If an excetion is raised from the hook the request is also canceled, 
+    # and the exception is handled with the error hook (just like exceptions raised from methods).
     #
     # Usage Example:
     #
     #    handler = ExampleHandler.new
     #    svc = ExampleService.new(handler)
     #
-    #    svc.before do |rpc_method, input, request|
-    #      if request.get_header "Force-Error"
+    #    svc.before do |rpc, input, env|
+    #      if env.get_http_request_header "Force-Error"
     #        return Twirp.canceled_error("failed as recuested sir")
     #      end
-    #      request.env["example_service.before_succeed"] = true # can be later accessed on the handler method
+    #      env[:before_hook_called] = true # can be later accessed on the handler method
+    #      env[:easy_access] = env.rack_request.env["rack.data"] # before hooks can be used to read data from the request
     #    end
     #
     #    svc.before handler.method(:before) # you can also delegate the hook to the handler (to reuse helpers, etc)
@@ -115,20 +120,21 @@ module Twirp
     end
 
     # Rack app handler.
-    def call(env)
-      request = Rack::Request.new(env)
-      rpc, content_type, bad_route = route_request(request)
+    def call(rack_env)
+      rack_request = Rack::Request.new(rack_env)
+      rpc, content_type, bad_route = route_request(rack_request)
       if bad_route
         return error_response(bad_route)
       end
-      input = decode_request(rpc[:input_class], content_type, request.body.read)
+      input = decode_request(rpc, content_type, rack_request.body.read)
+      env = Twirp::Environment.new(rack_request)
 
       begin
-        if twerr = run_before_hooks(rpc[:rpc_method], input, request)
+        if twerr = run_before_hooks(rpc, input, env)
           error_response(twerr)
         end
 
-        handler_output = @handler.send(rpc[:handler_method], input)
+        handler_output = @handler.send(rpc[:handler_method], input, env)
         if handler_output.is_a? Twirp::Error
           return error_response(handler_output)
         end
@@ -176,43 +182,45 @@ module Twirp
       return rpc, content_type, nil
     end
 
-    def decode_request(input_class, content_type, body)
+    def decode_request(rpc, content_type, body)
       case content_type
       when "application/json"
-        input_class.decode_json(body)
+        rpc[:input_class].decode_json(body)
       when "application/protobuf"
-        input_class.decode(body)
+        rpc[:input_class].decode(body)
       end
     end
 
     # Before hooks are run in order after the request has been successfully routed to a Method.
-    def run_before_hooks(rpc_method, input, request)
+    def run_before_hooks(rpc, input, env)
       return unless @before_hooks
       @before_hooks.each do |hook|
-        twerr = hook.call(rpc_method, input, request)
+        twerr = hook.call(rpc, input, env)
         return twerr if twerr && twerr.is_a?(Twirp::Error)
       end
       nil
     end
 
-    def encode_response_from_handler(rpc, content_type, resp)
-      proto_class = rpc[:output_class]
+    def encode_response_from_handler(rpc, content_type, output)
+      output_class = rpc[:output_class]
 
-      # Handlers may return just the attributes
-      if resp.is_a? Hash
-        resp = proto_class.new(resp)
+      if output.is_a? Hash
+        output = output_class.new(output)
       end
 
-      # Handlers may return nil, that should be converted to zero-values
-      if !resp
-        resp = proto_class.new
+      if output == nil
+        output = output_class.new # empty output with zero-values
+      end
+
+      if !output.is_a? output_class # validate return value
+        raise TypeError.new("Return value from .#{rpc[:handler_method]} expected to be an #{output_class.name} or Hash, but it is #{resp.class.name}")
       end
 
       case content_type
       when "application/json"
-        proto_class.encode_json(resp)
+        output_class.encode_json(output)
       when "application/protobuf"
-        proto_class.encode(resp)
+        output_class.encode(output)
       end
     end
 

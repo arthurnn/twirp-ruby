@@ -4,85 +4,86 @@ Twirp services and clients in Ruby.
 
 ### Installation
 Install the `twirp` gem:
+
 ```sh
 ➜ gem install twirp
 ```
 
 Use `go get` to install the ruby_twirp protoc plugin:
+
 ```sh
 ➜ go get github.com/cyrusaf/ruby-twirp/protoc-gen-twirp_ruby
 ```
 
 You will also need:
+
  - [protoc](https://github.com/golang/protobuf), the protobuf compiler. You need
    version 3+.
 
-### Haberdasher Example
+### HelloWorld Example
+
 See the `example/` folder for the final product.
 
 First create a basic `.proto` file:
+
 ```protobuf
-// haberdasher.proto
 syntax = "proto3";
 package example;
 
-service Haberdasher {
-    rpc HelloWorld(HelloWorldRequest) returns (HelloWorldResponse);
+service HelloWorld {
+    rpc Hello(HelloRequest) returns (HelloResponse);
 }
 
-message HelloWorldRequest {
+message HelloRequest {
     string name = 1;
 }
 
-message HelloWorldResponse {
+message HelloResponse {
     string message = 1;
 }
-
 ```
 
-Run the `protoc` binary to generate `gen/haberdasher_pb.rb` and `gen/haberdasher_twirp.rb`.
+Run the `protoc` binary to auto-generate `helloworld_pb.rb` and `haberdasher_twirp.rb` files:
+
 ```sh
 ➜ protoc --proto_path=. ./haberdasher.proto --ruby_out=gen --twirp_ruby_out=gen
 ```
 
-Write an implementation of our haberdasher service and attach to a rack server:
+Write a handler for the auto-generated service, this is your implementation:
+
 ```ruby
-# main.rb
+class HellowWorldHandler
+  def hello(input, env)
+    {message: "Hello #{input.name}"}
+  end
+end
+```
+
+Initialize the service with your handler and mount it as a Rack app:
+
+```ruby
 require 'rack'
 require_relative 'gen/haberdasher_pb.rb'
 require_relative 'gen/haberdasher_twirp.rb'
 
-class HaberdasherHandler
-    def hello_world(req)
-        return {message: "Hello #{req.name}"}
-    end
-end
-
-handler = HaberdasherHandler.new()
-service = Example::HaberdasherService.new(handler)
+handler = HellowWorldHandler.new()
+service = Example::HelloWorld.new(handler)
 Rack::Handler::WEBrick.run service
 ```
 
-You can also mount onto a rails service:
+You can also mount onto a rails app:
+
 ```ruby
 App::Application.routes.draw do
-  handler = HaberdasherHandler.new()
-  service = Example::HaberdasherService.new(handler)
-  mount service, at: HaberdasherService::PATH_PREFIX
+  mount service, at: service.path_prefix
 end
 ```
 
-Run `ruby main.rb` to start the server on port 8080:
-```sh
-➜ ruby main.rb
-```
+Twirp services accept both Protobuf and JSON messages. It is easy to `curl` your service to get a response:
 
-`curl` your server to get a response:
 ```sh
-➜ curl --request POST \
-  --url http://localhost:8080/twirp/examples.Haberdasher/HelloWorld \
+curl --request POST \
+  --url http://localhost:8080/twirp/example.HelloWorld/Hello \
   --header 'content-type: application/json' \
-  --data '{
-	"name": "World"
-  }'
+  --data '{"name":"World"}'
 ```

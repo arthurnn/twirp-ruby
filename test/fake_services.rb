@@ -41,8 +41,8 @@ class HaberdasherHandler
     @block = block if block_given?
   end
 
-  def make_hat(size)
-    @block && @block.call(size)
+  def make_hat(input, env)
+    @block && @block.call(input, env)
   end
 end
 
