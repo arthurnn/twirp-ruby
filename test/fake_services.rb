@@ -29,8 +29,7 @@ module Example
   class Haberdasher < Twirp::Service
     package "example"
     service "Haberdasher"
-
-    rpc "MakeHat", Size, Hat, handler_method: :make_hat
+    rpc :MakeHat, Size, Hat, :handler_method => :make_hat
   end
 end
 

@@ -8,15 +8,15 @@ require_relative './fake_services'
 
 class ServiceTest < Minitest::Test
 
-  # DSL rpc builds the proper rpc data on the service
-  def test_rpc_methods
-    assert_equal 1, Example::Haberdasher.rpcs.size
+  # The rpc DSL should properly build the base Twirp environment for each rpc method.
+  def test_base_envs_accessor
+    assert_equal 1, Example::Haberdasher.base_envs.size
     assert_equal({
-      rpc_method: "MakeHat",
+      rpc_method: :MakeHat,
       input_class: Example::Size,
       output_class: Example::Hat,
       handler_method: :make_hat,
-    }, Example::Haberdasher.rpcs["MakeHat"])
+    }, Example::Haberdasher.base_envs[:MakeHat])
   end
 
   # DSL package and service define the proper data on the service
@@ -54,7 +54,7 @@ class ServiceTest < Minitest::Test
     err = assert_raises ArgumentError do 
       Example::Haberdasher.new("fake handler")
     end
-    assert_equal 'Handler must respond to .make_hat(input) in order to handle the rpc method "MakeHat".', err.message
+    assert_equal 'Handler must respond to .make_hat(input, env) in order to handle the rpc method MakeHat.', err.message
   end
 
   def test_successful_json_request
@@ -83,7 +83,7 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'rpc method not found: "MakeUnicorns"',
+      "msg" => 'Invalid rpc method MakeUnicorns',
       "meta"=> {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeUnicorns"},
     }, JSON.parse(body[0]))    
   end
@@ -111,7 +111,7 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'unexpected Content-Type: "text/plain". Content-Type header must be one of "application/json" or "application/protobuf"',
+      "msg" => 'unexpected Content-Type: "text/plain". Content-Type header must be one of ["application/json", "application/protobuf"]',
       "meta"=> {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
@@ -215,7 +215,7 @@ class ServiceTest < Minitest::Test
 
   def test_handler_method_can_access_request_headers_through_the_env
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
-      inches = env.get_http_request_header("INCHES_FROM_HEADER")
+      inches = env[:rack_request].get_header("INCHES_FROM_HEADER")
       {inches: inches.to_i}
     end)
 
@@ -229,7 +229,19 @@ class ServiceTest < Minitest::Test
     assert_equal({"inches" => 7}, JSON.parse(body[0]))
   end
 
-  # TODO: test_handler_method_can_set_response_headers_through_the_env
+  def test_handler_method_can_set_response_headers_through_the_env
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      env[:http_response_headers]["My-Cool-Header"] = "coolio"
+      nil
+    end)
+
+    rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(rack_env)
+    
+    assert_equal 200, status
+    assert_equal "coolio", headers["My-Cool-Header"] # set by the handler
+    assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp
+  end
 
   # TODO: test_handler_raises_standard_error
 
@@ -242,18 +254,18 @@ class ServiceTest < Minitest::Test
 
     called_with = nil
     svc = Example::Haberdasher.new(handler)
-    svc.before do |rpc, input, env|
-      env[:contet_type] = env.rack_request.get_header("CONTENT_TYPE")
-      called_with = {rpc: rpc, input: input, env: env}
+    svc.before do |input, env|
+      env[:raw_contet_type] = env[:rack_request].get_header("CONTENT_TYPE")
+      called_with = {input: input, env: env}
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
     status, _, _ = svc.call(rack_env)
 
     refute_nil called_with, "the before hook was called"
-    assert_equal "MakeHat", called_with[:rpc][:rpc_method]
+    assert_equal :MakeHat, called_with[:env][:rpc_method]
     assert_equal Example::Size.new(inches: 10), called_with[:input]
-    assert_equal "application/json", called_with[:env][:contet_type]
+    assert_equal "application/json", called_with[:env][:raw_contet_type]
 
     assert handler_method_called, "the handler method was called"
     assert_equal 200, status, "response is successful"

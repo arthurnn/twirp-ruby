@@ -88,7 +88,7 @@ func (g *generator) generateFile(file *descriptor.FileDescriptorProto) *plugin.C
 			methName := methodName(method)
 			inputName := methodInputName(method)
 			outputName := methodOutputName(method)
-			g.P(fmt.Sprintf(`%s  rpc "%s", %s, %s, handler_method: "%s"`,
+			g.P(fmt.Sprintf(`%s  rpc :%s, %s, %s, :handler_method => :%s`,
 				indent, methName, inputName, outputName, SnakeCase(methName)))
 		}
 		g.P(fmt.Sprintf(`%send`, indent))

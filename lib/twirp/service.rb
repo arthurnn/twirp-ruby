@@ -1,6 +1,12 @@
 require "json"
 
 module Twirp
+
+  CONTENT_TYPES = {
+    "application/json"     => :json,
+    "application/protobuf" => :protobuf,
+  }
+
   class Service
 
     class << self
@@ -21,9 +27,9 @@ module Twirp
         raise ArgumentError.new("output_class must be a Protobuf Message class") unless output_class.is_a?(Class)
         raise ArgumentError.new("opts[:handler_method] is mandatory") unless opts && opts[:handler_method]
 
-        @rpcs ||= {}
-        @rpcs[rpc_method.to_s] = {
-          rpc_method: rpc_method.to_s,
+        @base_envs ||= {}
+        @base_envs[rpc_method.to_sym] = {
+          rpc_method: rpc_method.to_sym,
           input_class: input_class,
           output_class: output_class,
           handler_method: opts[:handler_method].to_sym,
@@ -43,9 +49,9 @@ module Twirp
         sname.empty? ? self.name : sname
       end
 
-      # Get configured metadata for rpc methods.
-      def rpcs
-        @rpcs || {}
+      # Base Twirp environment for each rpc method.
+      def base_envs
+        @base_envs || {}
       end
 
       # Service full name uniquelly identifies the service.
@@ -68,16 +74,17 @@ module Twirp
     # Instantiate a new service with a handler.
     # The handler must implemnt all rpc methods required by this service.
     def initialize(handler)
-      @handler = handler
-      self.class.rpcs.each do |rpc_method, rpc|
-        m = rpc[:handler_method]
-        if !handler.respond_to?(m)
-          raise ArgumentError.new("Handler must respond to .#{m}(input) in order to handle the rpc method #{rpc_method.inspect}.")
+      self.class.base_envs.each do |rpc_method, env|
+        hmethod = env[:handler_method]
+        if !handler.respond_to?(hmethod)
+          raise ArgumentError.new("Handler must respond to .#{hmethod}(input, env) in order to handle the rpc method #{rpc_method}.")
         end
-        if handler.method(m).arity != 2
-          raise ArgumentError.new("Hanler method #{m} must accept exactly 2 arguments (input, env).")
+        if handler.method(hmethod).arity != 2
+          raise ArgumentError.new("Hanler method #{hmethod} must accept exactly 2 arguments: #{hmethod}(input, env).")
         end
       end
+
+      @handler = handler
     end
 
     # Setup a before hook on this service.
@@ -122,28 +129,29 @@ module Twirp
     # Rack app handler.
     def call(rack_env)
       rack_request = Rack::Request.new(rack_env)
-      rpc, content_type, bad_route = route_request(rack_request)
+      env, bad_route = route_request(rack_request)
       if bad_route
         return error_response(bad_route)
       end
-      input = decode_request(rpc, content_type, rack_request.body.read)
-      env = Twirp::Environment.new(rack_request)
+      input = decode_input(rack_request.body.read, env)
 
       begin
-        if twerr = run_before_hooks(rpc, input, env)
-          error_response(twerr)
+        twerr = run_before_hooks(input, env)
+        if twerr
+          return error_response(twerr)
         end
 
-        handler_output = @handler.send(rpc[:handler_method], input, env)
+        handler_output = @handler.send(env[:handler_method], input, env)
         if handler_output.is_a? Twirp::Error
           return error_response(handler_output)
         end
 
-        encoded_resp = encode_response_from_handler(rpc, content_type, handler_output)
-        success_response(content_type, encoded_resp)
+        output = output_from_handler(handler_output, env)
+        encoded_resp = encode_output(output, env)
+        return success_response(encoded_resp, rack_request.get_header("CONTENT_TYPE"), env)
 
       rescue Twirp::Exception => twerr
-        error_response(twerr)
+        return error_response(twerr)
       end
     end
 
@@ -158,74 +166,74 @@ module Twirp
 
   private
 
-    def route_request(request)
-      if request.request_method != "POST"
-        return nil, nil, bad_route_error("HTTP request method must be POST", request)
+    # Verify that the request can be routed to a valid handler method 
+    # and return a touple [env, twerr], with the Twirp environment used by hooks
+    # and handler methods, or a Twirp bad_route error if it could not be routed.
+    def route_request(rack_request)
+      if rack_request.request_method != "POST"
+        return nil, bad_route_error("HTTP request method must be POST", rack_request)
       end
 
-      content_type = request.env["CONTENT_TYPE"]
-      if content_type != "application/json" && content_type != "application/protobuf"
-        return nil, nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of \"application/json\" or \"application/protobuf\"", request)
+      content_type = CONTENT_TYPES[rack_request.get_header("CONTENT_TYPE")]
+      if !content_type
+        return nil, bad_route_error("unexpected Content-Type: #{rack_request.get_header("CONTENT_TYPE").inspect}. Content-Type header must be one of #{CONTENT_TYPES.keys.inspect}", rack_request)
       end
       
-      path_parts = request.fullpath.split("/")
+      path_parts = rack_request.fullpath.split("/")
       if path_parts.size < 4 || path_parts[-2] != self.service_full_name || path_parts[-3] != "twirp"
-        return nil, nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", request)
+        return nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", rack_request)
       end
-      method_name = path_parts[-1]
+      method_name = path_parts[-1].to_sym
 
-      rpc = self.class.rpcs[method_name]
-      if !rpc
-        return nil, nil, bad_route_error("rpc method not found: #{method_name.inspect}", request)
+      base_env = self.class.base_envs[method_name]
+      if !base_env
+        return nil, bad_route_error("Invalid rpc method #{method_name}", rack_request)
       end
 
-      return rpc, content_type, nil
+      return base_env.merge({ # base env contains metadata useful for before hooks like :rpc_method and :input_class
+        rack_request: rack_request, # should only be accessed by before hooks (that can add more data to the env).
+        content_type: content_type, # :json or :protobuf.
+        http_response_headers: {},  # can be used by hanlder methods to add response headers.
+      }), nil
     end
 
-    def decode_request(rpc, content_type, body)
-      case content_type
-      when "application/json"
-        rpc[:input_class].decode_json(body)
-      when "application/protobuf"
-        rpc[:input_class].decode(body)
+    def decode_input(body, env)
+      case env[:content_type]
+      when :protobuf then env[:input_class].decode(body)
+      when :json     then env[:input_class].decode_json(body)
+      end
+    end
+
+    def encode_output(output, env)
+      case env[:content_type]
+      when :protobuf then env[:output_class].encode(output)
+      when :json     then env[:output_class].encode_json(output)
       end
     end
 
     # Before hooks are run in order after the request has been successfully routed to a Method.
-    def run_before_hooks(rpc, input, env)
+    def run_before_hooks(input, env)
       return unless @before_hooks
       @before_hooks.each do |hook|
-        twerr = hook.call(rpc, input, env)
+        twerr = hook.call(input, env)
         return twerr if twerr && twerr.is_a?(Twirp::Error)
       end
       nil
     end
 
-    def encode_response_from_handler(rpc, content_type, output)
-      output_class = rpc[:output_class]
-
-      if output.is_a? Hash
-        output = output_class.new(output)
-      end
-
-      if output == nil
-        output = output_class.new # empty output with zero-values
-      end
-
-      if !output.is_a? output_class # validate return value
-        raise TypeError.new("Return value from .#{rpc[:handler_method]} expected to be an #{output_class.name} or Hash, but it is #{resp.class.name}")
-      end
-
-      case content_type
-      when "application/json"
-        output_class.encode_json(output)
-      when "application/protobuf"
-        output_class.encode(output)
+    def output_from_handler(handler_output, env)
+      case handler_output
+      when env[:output_class] then handler_output
+      when Hash then env[:output_class].new(handler_output)
+      when nil then env[:output_class].new # empty output with zero-values
+      else
+        raise TypeError.new("Unexpected type #{handler_output.class.name} returned by handler.#{env[:handler_method]}(input, env). Expected one of #{env[:output_class].name}, Hash (attributes) or nil (zero-values).")
       end
     end
 
-    def success_response(content_type, encoded_resp)
-      [200, {'Content-Type' => content_type}, [encoded_resp]]
+    def success_response(resp_body, request_content_type, env)
+      headers = env[:http_response_headers].merge('Content-Type' => request_content_type)
+      [200, headers, [resp_body]]
     end
 
     def error_response(twirp_error)
