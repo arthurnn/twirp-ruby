@@ -16,6 +16,14 @@ module Twirp
       @data[key] = value
     end
 
+    def to_hash
+      @data
+    end
+
+    def to_h
+      to_hash
+    end
+
     def get_http_request_header(header)
       @rack_request.get_header(header)
     end
