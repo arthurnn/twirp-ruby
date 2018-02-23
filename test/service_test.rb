@@ -212,7 +212,7 @@ class ServiceTest < Minitest::Test
   # Handler should be able to return Twirp::Error values, that will trigger error responses
   def test_handler_returns_twirp_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
-      return Twirp.invalid_argument_error "I don't like that size"
+      return Twirp::Error.invalid_argument "I don't like that size"
     end)
 
     rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
@@ -313,7 +313,7 @@ class ServiceTest < Minitest::Test
       nil
     end)
     svc.before do |env, rack_env|
-      return Twirp.internal_error "error from before hook"
+      return Twirp::Error.internal "error from before hook"
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
@@ -363,11 +363,11 @@ class ServiceTest < Minitest::Test
     end)
     svc.before do |env, rack_env|
       hook1_called = true
-      return Twirp.internal_error "hook1 failed"
+      return Twirp::Error.internal "hook1 failed"
     end
     svc.before do |env, rack_env|
       hook2_called = true
-      return Twirp.internal_error "hook2 failed"
+      return Twirp::Error.internal "hook2 failed"
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
@@ -415,7 +415,7 @@ class ServiceTest < Minitest::Test
   def test_after_hook_on_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |input, env|
       env[:handler_called] = true
-      return Twirp.internal_error "error from handler"
+      return Twirp::Error.internal "error from handler"
     end)
     after_called = false
     svc.after do |env|
@@ -443,7 +443,7 @@ class ServiceTest < Minitest::Test
       {inches: 88, color: "blue"}
     end)
     svc.after do |env|
-      return Twirp.internal_error "error from after hook"
+      return Twirp::Error.internal "error from after hook"
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
@@ -461,10 +461,10 @@ class ServiceTest < Minitest::Test
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
-      return Twirp.invalid_argument_error "erro from handler"
+      return Twirp::Error.invalid_argument "erro from handler"
     end)
     svc.after do |env|
-      return Twirp.internal_error "error from after hook"
+      return Twirp::Error.internal "error from after hook"
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
@@ -515,11 +515,11 @@ class ServiceTest < Minitest::Test
     end)
     svc.after do |env|
       hook1_called = true
-      return Twirp.internal_error "hook1 failed"
+      return Twirp::Error.internal "hook1 failed"
     end
     svc.after do |env|
       hook2_called = true
-      return Twirp.internal_error "hook2 failed"
+      return Twirp::Error.internal "hook2 failed"
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10

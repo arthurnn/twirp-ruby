@@ -182,7 +182,7 @@ module Twirp
       begin
         input = decode_input(rack_request.body.read, base_env[:input_class], content_type)
       rescue => e
-        return nil, Twirp.invalid_argument_error("Invalid request body for rpc method #{method_name.inspect}", content_type: content_type)
+        return nil, Twirp::Error.invalid_argument("Invalid request body for rpc method #{method_name.inspect}", content_type: content_type)
       end
       
       env = base_env.merge({
@@ -260,7 +260,7 @@ module Twirp
     end
 
     def bad_route_error(msg, req)
-      Twirp.bad_route_error msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
+      Twirp::Error.bad_route msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
     end
 
   end

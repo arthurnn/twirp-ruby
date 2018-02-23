@@ -30,26 +30,26 @@ module Twirp
     ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
   end
 
-  # Error constructors: `Twirp.{code}_error(msg, meta=nil)` for each error code.
-  # Use this constructors to ensure the errors have valid error codes. Example:
-  #     Twirp.internal_error("boom")
-  #     Twirp.invalid_argument_error("foo is mandatory", argument: "foo")
-  #     Twirp.permission_denied_error("thou shall not pass!", target: "Balrog")
-  ERROR_CODES.each do |code|
-    define_singleton_method "#{code}_error" do |msg, meta=nil|
-      Error.new(code, msg, meta)
-    end
-  end
-
-  # Wrap another error as a Twirp::Error :internal.
-  def internal_error_with(err)
-    internal_error err.message, cause: err.class.name
-  end
 
   # Twirp::Error represents an error response from a Twirp service.
   # Twirp::Error is not an Exception to be raised, but a value to be returned
   # by service handlers and received by clients.
 	class Error
+
+    # Use this constructors to ensure the errors have valid error codes. Example:
+    #     Twirp::Error.internal("boom")
+    #     Twirp::Error.invalid_argument("foo is mandatory", argument: "foo")
+    #     Twirp::Error.permission_denied("thou shall not pass!", target: "Balrog")
+    ERROR_CODES.each do |code|
+      define_singleton_method code do |msg, meta=nil|
+        new(code, msg, meta)
+      end
+    end
+
+    # Wrap another error as a Twirp::Error :internal.
+    def self.internal_with(err)
+      internal err.message, cause: err.class.name
+    end
 
     attr_reader :code, :msg, :meta
 

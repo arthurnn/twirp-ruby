@@ -35,17 +35,17 @@ end
 class TestTwirpError < Minitest::Test
 
   def test_constructors # Try out some constructors
-    err = Twirp.internal_error "woops"
+    err = Twirp::Error.internal "woops"
     assert_equal :internal, err.code
     assert_equal "woops", err.msg
     assert_equal({}, err.meta) # empty
 
-    err = Twirp.not_found_error "not here", who: "Waldo"
+    err = Twirp::Error.not_found "not here", who: "Waldo"
     assert_equal :not_found, err.code
     assert_equal "not here", err.msg
     assert_equal({who: "Waldo"}, err.meta)
 
-    err = Twirp.invalid_argument_error("required", "argument" => "size")
+    err = Twirp::Error.invalid_argument("required", "argument" => "size")
     assert_equal :invalid_argument, err.code
     assert_equal "required", err.msg
     assert_equal({"argument" => "size"}, err.meta) # empty
