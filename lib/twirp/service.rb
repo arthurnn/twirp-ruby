@@ -100,6 +100,18 @@ module Twirp
       (@before_hooks ||= []) << block
     end
 
+    # Setup an after hook.
+    # After hooks are always called at the end of the request, both on success or error.
+    # The hook is a lambda that is called with the Twirp environment.
+    # The environment contains an :output if the response was successfully encoded,
+    # or a :twirp_error if the handler method or any before hooks failed with an error.
+    #
+    # If the after hook returns a Twirp::Error then that error is used in the response.
+    # Any other return value fro the hook is ignored (nil or otherwise).
+    def after(&block)
+      (@after_hooks ||= []) << block
+    end
+
     # Hook code that is run after method calls that return a Twirp::Error,
     # or raise an exception ...
     def error(&block)
@@ -110,26 +122,25 @@ module Twirp
     def call(rack_env)
       env, bad_route = route_request(rack_env)
       if bad_route
-        return error_response(bad_route)
+        return error_response(bad_route, nil, false)
       end
 
       begin
-        twerr = run_before_hooks(env, rack_env)
-        if twerr
-          return error_response(twerr)
+        if twerr = run_before_hooks(env, rack_env)
+          return error_response(twerr, env)
         end
 
         handler_output = @handler.send(env[:handler_method], env[:input], env)
         if handler_output.is_a? Twirp::Error
-          return error_response(handler_output)
+          return error_response(handler_output, env)
         end
 
-        output = output_from_handler(handler_output, env)
-        encoded_resp = encode_output(output, env[:output_class], env[:content_type])
+        env[:output] = output_from_handler(handler_output, env)
+        encoded_resp = encode_output(env[:output], env[:output_class], env[:content_type])
         return success_response(encoded_resp, env)
 
       rescue Twirp::Exception => twerr
-        return error_response(twerr)
+        return error_response(twerr, env)
       end
     end
 
@@ -197,12 +208,19 @@ module Twirp
       end
     end
 
-    # Before hooks are run in order after the request has been successfully
-    # routed and the Twirp environment was initialized for that method.
     def run_before_hooks(env, rack_env)
       return unless @before_hooks
       @before_hooks.each do |hook|
         twerr = hook.call(env, rack_env)
+        return twerr if twerr && twerr.is_a?(Twirp::Error)
+      end
+      nil
+    end
+
+    def run_after_hooks(env)
+      return unless @after_hooks
+      @after_hooks.each do |hook|
+        twerr = hook.call(env)
         return twerr if twerr && twerr.is_a?(Twirp::Error)
       end
       nil
@@ -219,11 +237,22 @@ module Twirp
     end
 
     def success_response(resp_body, env)
+      if twerr = run_after_hooks(env)
+        return error_response(twerr)
+      end
+      
       headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
       [200, headers, [resp_body]]
     end
 
-    def error_response(twirp_error)
+    def error_response(twirp_error, env, should_run_after_hooks = true)
+      if should_run_after_hooks
+        env[:twirp_error] = twirp_error
+        if twerr = run_after_hooks(env)
+          return error_response(twerr, false)
+        end
+      end
+
       status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twirp_error.code]
       headers = {'Content-Type' => 'application/json'}
       resp_body = JSON.generate(twirp_error.to_h)
