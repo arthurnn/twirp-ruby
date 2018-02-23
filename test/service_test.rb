@@ -149,7 +149,6 @@ class ServiceTest < Minitest::Test
 
     assert_equal 400, status
     assert_equal 'application/json', headers['Content-Type']
-
     assert_equal({
       "code" => 'invalid_argument', 
       "msg"  => 'Invalid request body for rpc method "MakeHat"',
@@ -164,7 +163,6 @@ class ServiceTest < Minitest::Test
 
     assert_equal 400, status
     assert_equal 'application/json', headers['Content-Type']
-
     assert_equal({
       "code" => 'invalid_argument', 
       "msg"  => 'Invalid request body for rpc method "MakeHat"',
@@ -290,8 +288,45 @@ class ServiceTest < Minitest::Test
     assert_equal 200, status, "response is successful"
   end
 
-  # TODO: test_before_hook_add_data_in_env_for_the_handler_method
-  # TODO: test_before_hook_returning_twirp_error_cancels_request
+  def test_before_hook_add_data_in_env_for_the_handler_method
+    val = nil
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      val = env[:from_the_hook]
+      nil
+    end)
+    svc.before do |env, rack_env|
+      env[:from_the_hook] = "hello handler"
+    end
+
+    rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
+    status, _, _ = svc.call(rack_env)
+
+    assert_equal 200, status
+    assert_equal "hello handler", val
+  end
+
+
+  def test_before_hook_returning_twirp_error_cancels_request
+    handler_called = false
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      handler_called = true
+      nil
+    end)
+    svc.before do |env, rack_env|
+      return Twirp.internal_error "error from before hook"
+    end
+
+    rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
+    status, _, _ = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal 'application/json', headers['Content-Type']
+    assert_equal({
+      "code" => 'intenal', 
+      "msg"  => 'error from before hook',
+    }, JSON.parse(body[0]))
+  end
+
   # TODO: test_before_hook_raising_exception_cancels_request
 
 
