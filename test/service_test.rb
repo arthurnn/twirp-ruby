@@ -157,6 +157,21 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
+  def test_bad_route_with_wrong_protobuf_body
+    rack_env = Rack::MockRequest.env_for "/twirp/example.Haberdasher/MakeHat", 
+      method: "POST", input: 'bad protobuf', "CONTENT_TYPE" => "application/protobuf"
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type']
+
+    assert_equal({
+      "code" => 'invalid_argument', 
+      "msg"  => 'Invalid request body for rpc method "MakeHat"',
+      "meta" => {"content_type" => "application/protobuf"},
+    }, JSON.parse(body[0]))
+  end
+
   # Handler should be able to return an instance of the proto message
   def test_handler_returns_a_proto_message
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
