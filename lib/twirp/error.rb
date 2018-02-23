@@ -48,10 +48,14 @@ module Twirp
 
     # Wrap another error as a Twirp::Error :internal.
     def self.internal_with(err)
-      internal err.message, cause: err.class.name
+      twerr = internal err.message, cause: err.class.name
+      twerr.cause = err
+      twerr
     end
 
     attr_reader :code, :msg, :meta
+    
+    attr_accessor :cause # used when wrapping another error, but this is not serialized
 
     # Initialize a Twirp::Error
     # The code must be one of the valid ERROR_CODES Symbols (e.g. :internal, :not_found, :permission_denied ...).
