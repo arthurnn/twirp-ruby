@@ -16,7 +16,7 @@ class ServiceTest < Minitest::Test
       input_class: Example::Size,
       output_class: Example::Hat,
       handler_method: :make_hat,
-    }, Example::Haberdasher.base_envs[:MakeHat])
+    }, Example::Haberdasher.base_envs["MakeHat"])
   end
 
   # DSL package and service define the proper data on the service
@@ -83,8 +83,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'Invalid rpc method MakeUnicorns',
-      "meta"=> {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeUnicorns"},
+      "msg"  => 'Invalid rpc method "MakeUnicorns"',
+      "meta" => {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeUnicorns"},
     }, JSON.parse(body[0]))    
   end
 
@@ -97,8 +97,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'HTTP request method must be POST',
-      "meta"=> {"twirp_invalid_route" => "GET /twirp/example.Haberdasher/MakeHat"},
+      "msg"  => 'HTTP request method must be POST',
+      "meta" => {"twirp_invalid_route" => "GET /twirp/example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
@@ -111,8 +111,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'unexpected Content-Type: "text/plain". Content-Type header must be one of ["application/json", "application/protobuf"]',
-      "meta"=> {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeHat"},
+      "msg"  => 'unexpected Content-Type: "text/plain". Content-Type header must be one of application/json or application/protobuf',
+      "meta" => {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
@@ -124,8 +124,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}',
-      "meta"=> {"twirp_invalid_route" => "POST /wrongpath"},
+      "msg"  => 'Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}',
+      "meta" => {"twirp_invalid_route" => "POST /wrongpath"},
     }, JSON.parse(body[0]))
   end
 
@@ -137,8 +137,23 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
       "code" => 'bad_route', 
-      "msg" => 'Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}',
-      "meta"=> {"twirp_invalid_route" => "POST /another/wrong.Path/MakeHat"},
+      "msg"  => 'Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}',
+      "meta" => {"twirp_invalid_route" => "POST /another/wrong.Path/MakeHat"},
+    }, JSON.parse(body[0]))
+  end
+
+  def test_bad_route_with_wrong_json_body
+    rack_env = Rack::MockRequest.env_for "/twirp/example.Haberdasher/MakeHat", 
+      method: "POST", input: 'bad json', "CONTENT_TYPE" => "application/json"
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type']
+
+    assert_equal({
+      "code" => 'invalid_argument', 
+      "msg"  => 'Invalid request body for rpc method "MakeHat"',
+      "meta" => {"content_type" => "application/json"},
     }, JSON.parse(body[0]))
   end
 
@@ -213,25 +228,9 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  def test_handler_method_can_access_request_headers_through_the_env
-    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
-      inches = env[:rack_request].get_header("INCHES_FROM_HEADER")
-      {inches: inches.to_i}
-    end)
-
-    rack_env = Rack::MockRequest.env_for "/twirp/example.Haberdasher/MakeHat", method: "POST", 
-      input: '{"inches": 666}', # value should be ignored
-      "CONTENT_TYPE" => "application/json",
-      "INCHES_FROM_HEADER" => "7" # this value should be used
-    status, headers, body = svc.call(rack_env)
-    
-    assert_equal 200, status
-    assert_equal({"inches" => 7}, JSON.parse(body[0]))
-  end
-
   def test_handler_method_can_set_response_headers_through_the_env
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
-      env[:http_response_headers]["My-Cool-Header"] = "coolio"
+      env[:http_response_headers]["Cache-Control"] = "public, max-age=60"
       nil
     end)
 
@@ -239,8 +238,8 @@ class ServiceTest < Minitest::Test
     status, headers, body = svc.call(rack_env)
     
     assert_equal 200, status
-    assert_equal "coolio", headers["My-Cool-Header"] # set by the handler
-    assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp
+    assert_equal "public, max-age=60", headers["Cache-Control"] # set by the handler
+    assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp::Service
   end
 
   # TODO: test_handler_raises_standard_error
@@ -252,20 +251,25 @@ class ServiceTest < Minitest::Test
       nil
     end
 
-    called_with = nil
+    called_with_env = nil
+    called_with_rack_env = nil
     svc = Example::Haberdasher.new(handler)
-    svc.before do |input, env|
-      env[:raw_contet_type] = env[:rack_request].get_header("CONTENT_TYPE")
-      called_with = {input: input, env: env}
+    svc.before do |env, rack_env|
+      env[:raw_contet_type] = rack_env["CONTENT_TYPE"]
+      called_with_env = env
+      called_with_rack_env = rack_env
     end
 
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
     status, _, _ = svc.call(rack_env)
 
-    refute_nil called_with, "the before hook was called"
-    assert_equal :MakeHat, called_with[:env][:rpc_method]
-    assert_equal Example::Size.new(inches: 10), called_with[:input]
-    assert_equal "application/json", called_with[:env][:raw_contet_type]
+    refute_nil called_with_env, "the before hook was called with a Twirp env"
+    assert_equal :MakeHat, called_with_env[:rpc_method]
+    assert_equal Example::Size.new(inches: 10), called_with_env[:input]
+    assert_equal "application/json", called_with_env[:raw_contet_type]
+
+    refute_nil called_with_rack_env, "the before hook was called with a Rack env"
+    assert_equal "POST", called_with_rack_env["REQUEST_METHOD"]
 
     assert handler_method_called, "the handler method was called"
     assert_equal 200, status, "response is successful"

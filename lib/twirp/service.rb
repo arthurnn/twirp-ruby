@@ -2,11 +2,6 @@ require "json"
 
 module Twirp
 
-  CONTENT_TYPES = {
-    "application/json"     => :json,
-    "application/protobuf" => :protobuf,
-  }
-
   class Service
 
     class << self
@@ -28,7 +23,7 @@ module Twirp
         raise ArgumentError.new("opts[:handler_method] is mandatory") unless opts && opts[:handler_method]
 
         @base_envs ||= {}
-        @base_envs[rpc_method.to_sym] = {
+        @base_envs[rpc_method.to_s] = {
           rpc_method: rpc_method.to_sym,
           input_class: input_class,
           output_class: output_class,
@@ -75,47 +70,32 @@ module Twirp
     # The handler must implemnt all rpc methods required by this service.
     def initialize(handler)
       self.class.base_envs.each do |rpc_method, env|
-        hmethod = env[:handler_method]
-        if !handler.respond_to?(hmethod)
-          raise ArgumentError.new("Handler must respond to .#{hmethod}(input, env) in order to handle the rpc method #{rpc_method}.")
+        meth = env[:handler_method]
+        if !handler.respond_to?(meth)
+          raise ArgumentError.new("Handler must respond to .#{meth}(input, env) in order to handle the rpc method #{rpc_method}.")
         end
-        if handler.method(hmethod).arity != 2
-          raise ArgumentError.new("Hanler method #{hmethod} must accept exactly 2 arguments: #{hmethod}(input, env).")
+        if handler.method(meth).arity != 2
+          raise ArgumentError.new("Hanler method #{meth} must accept exactly 2 arguments: #{meth}(input, env).")
         end
       end
 
       @handler = handler
     end
 
-    # Setup a before hook on this service.
+    # Setup a before hook.
     # Before hooks are called after the request has been successfully routed to a method.
     # If multiple hooks are added, they are run in the same order as declared.
-    # The hook is a block that accepts 3 parameters: (rpc, input, request)
-    #  * rpc: rpc data for the current method with info like rpc[:rpc_method] and rpc[:input_class].
-    #  * input: Protobuf message object that will be passed to the handler method.
-    #  * env: the Twirp environment object that will be passed to the handler method.
+    # The hook is a lambda that is called with 2 parameters:
+    #  * env: Twirp environment that will be passed to the handler.
+    #         It contains data about the routed method like :rpc_method, :input or :input_class.
+    #  * rack_env: Rack environment with data from the http request and Rack middleware.
+    # 
+    # The before hook can read the Rack enviornment to add relevant data into the
+    # Twirp environment that is accessible by handler methods.
     #
     # If the before hook returns a Twirp::Error then the request is inmediatly
     # canceled, the handler method is not called, and that error is returned instead.
     # Any other return value from the hook is ignored (nil or otherwise).
-    # If an excetion is raised from the hook the request is also canceled, 
-    # and the exception is handled with the error hook (just like exceptions raised from methods).
-    #
-    # Usage Example:
-    #
-    #    handler = ExampleHandler.new
-    #    svc = ExampleService.new(handler)
-    #
-    #    svc.before do |rpc, input, env|
-    #      if env.get_http_request_header "Force-Error"
-    #        return Twirp.canceled_error("failed as recuested sir")
-    #      end
-    #      env[:before_hook_called] = true # can be later accessed on the handler method
-    #      env[:easy_access] = env.rack_request.env["rack.data"] # before hooks can be used to read data from the request
-    #    end
-    #
-    #    svc.before handler.method(:before) # you can also delegate the hook to the handler (to reuse helpers, etc)
-    #
     def before(&block)
       (@before_hooks ||= []) << block
     end
@@ -128,27 +108,25 @@ module Twirp
 
     # Rack app handler.
     def call(rack_env)
-      rack_request = Rack::Request.new(rack_env)
-      env, bad_route = route_request(rack_request)
+      env, bad_route = route_request(rack_env)
       if bad_route
         return error_response(bad_route)
       end
-      input = decode_input(rack_request.body.read, env)
 
       begin
-        twerr = run_before_hooks(input, env)
+        twerr = run_before_hooks(env, rack_env)
         if twerr
           return error_response(twerr)
         end
 
-        handler_output = @handler.send(env[:handler_method], input, env)
+        handler_output = @handler.send(env[:handler_method], env[:input], env)
         if handler_output.is_a? Twirp::Error
           return error_response(handler_output)
         end
 
         output = output_from_handler(handler_output, env)
-        encoded_resp = encode_output(output, env)
-        return success_response(encoded_resp, rack_request.get_header("CONTENT_TYPE"), env)
+        encoded_resp = encode_output(output, env[:output_class], env[:content_type])
+        return success_response(encoded_resp, env)
 
       rescue Twirp::Exception => twerr
         return error_response(twerr)
@@ -166,56 +144,65 @@ module Twirp
 
   private
 
-    # Verify that the request can be routed to a valid handler method 
-    # and return a touple [env, twerr], with the Twirp environment used by hooks
-    # and handler methods, or a Twirp bad_route error if it could not be routed.
-    def route_request(rack_request)
+    def route_request(rack_env)
+      rack_request = Rack::Request.new(rack_env)
+
       if rack_request.request_method != "POST"
         return nil, bad_route_error("HTTP request method must be POST", rack_request)
       end
 
-      content_type = CONTENT_TYPES[rack_request.get_header("CONTENT_TYPE")]
-      if !content_type
-        return nil, bad_route_error("unexpected Content-Type: #{rack_request.get_header("CONTENT_TYPE").inspect}. Content-Type header must be one of #{CONTENT_TYPES.keys.inspect}", rack_request)
+      content_type = rack_request.get_header("CONTENT_TYPE")
+      if content_type != "application/json" && content_type != "application/protobuf"
+        return nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of application/json or application/protobuf", rack_request)
       end
       
       path_parts = rack_request.fullpath.split("/")
       if path_parts.size < 4 || path_parts[-2] != self.service_full_name || path_parts[-3] != "twirp"
         return nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", rack_request)
       end
-      method_name = path_parts[-1].to_sym
+      method_name = path_parts[-1]
 
       base_env = self.class.base_envs[method_name]
       if !base_env
-        return nil, bad_route_error("Invalid rpc method #{method_name}", rack_request)
+        return nil, bad_route_error("Invalid rpc method #{method_name.inspect}", rack_request)
       end
 
-      return base_env.merge({ # base env contains metadata useful for before hooks like :rpc_method and :input_class
-        rack_request: rack_request, # should only be accessed by before hooks (that can add more data to the env).
-        content_type: content_type, # :json or :protobuf.
-        http_response_headers: {},  # can be used by hanlder methods to add response headers.
-      }), nil
+      input = nil
+      begin
+        input = decode_input(rack_request.body.read, base_env[:input_class], content_type)
+      rescue => e
+        return nil, Twirp.invalid_argument_error("Invalid request body for rpc method #{method_name.inspect}", content_type: content_type)
+      end
+      
+      env = base_env.merge({
+        content_type: content_type,
+        input: input,
+        http_response_headers: {},
+      })
+
+      return env, nil
     end
 
-    def decode_input(body, env)
-      case env[:content_type]
-      when :protobuf then env[:input_class].decode(body)
-      when :json     then env[:input_class].decode_json(body)
+    def decode_input(body, input_class, content_type)
+      case content_type
+      when "application/protobuf" then input_class.decode(body)
+      when "application/json"     then input_class.decode_json(body)
       end
     end
 
-    def encode_output(output, env)
-      case env[:content_type]
-      when :protobuf then env[:output_class].encode(output)
-      when :json     then env[:output_class].encode_json(output)
+    def encode_output(output, output_class, content_type)
+      case content_type
+      when "application/protobuf" then output_class.encode(output)
+      when "application/json"     then output_class.encode_json(output)
       end
     end
 
-    # Before hooks are run in order after the request has been successfully routed to a Method.
-    def run_before_hooks(input, env)
+    # Before hooks are run in order after the request has been successfully
+    # routed and the Twirp environment was initialized for that method.
+    def run_before_hooks(env, rack_env)
       return unless @before_hooks
       @before_hooks.each do |hook|
-        twerr = hook.call(input, env)
+        twerr = hook.call(env, rack_env)
         return twerr if twerr && twerr.is_a?(Twirp::Error)
       end
       nil
@@ -231,14 +218,16 @@ module Twirp
       end
     end
 
-    def success_response(resp_body, request_content_type, env)
-      headers = env[:http_response_headers].merge('Content-Type' => request_content_type)
+    def success_response(resp_body, env)
+      headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
       [200, headers, [resp_body]]
     end
 
     def error_response(twirp_error)
       status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twirp_error.code]
-      [status, {'Content-Type' => 'application/json'}, [JSON.generate(twirp_error.to_h)]]
+      headers = {'Content-Type' => 'application/json'}
+      resp_body = JSON.generate(twirp_error.to_h)
+      [status, headers, [resp_body]]
     end
 
     def bad_route_error(msg, req)
