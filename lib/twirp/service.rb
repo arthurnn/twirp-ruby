@@ -83,46 +83,28 @@ module Twirp
     end
 
     # Setup a before hook.
-    # Before hooks are called after the request has been successfully routed to a method.
-    # If multiple hooks are added, they are run in the same order as declared.
-    # The hook is a lambda that is called with 2 parameters:
-    #  * env: Twirp environment that will be passed to the handler.
-    #         It contains data about the routed method like :rpc_method, :input or :input_class.
-    #  * rack_env: Rack environment with data from the http request and Rack middleware.
-    # 
-    # The before hook can read the Rack enviornment to add relevant data into the
-    # Twirp environment that is accessible by handler methods.
-    #
-    # If the before hook returns a Twirp::Error then the request is inmediatly
-    # canceled, the handler method is not called, and that error is returned instead.
-    # Any other return value from the hook is ignored (nil or otherwise).
     def before(&block)
       (@before_hooks ||= []) << block
     end
 
-    # Setup an after hook.
-    # After hooks are always called at the end of the request, both on success or error.
-    # The hook is a lambda that is called with the Twirp environment.
-    # The environment contains an :output if the response was successfully encoded,
-    # or a :twirp_error if the handler method or any before hooks failed with an error.
-    #
-    # If the after hook returns a Twirp::Error then that error is used in the response.
-    # Any other return value fro the hook is ignored (nil or otherwise).
-    def after(&block)
-      (@after_hooks ||= []) << block
+    # Setup a success hook.
+    def success(&block)
+      (@success_hooks ||= []) << block
     end
 
-    # Hook code that is run after method calls that return a Twirp::Error,
-    # or raise an exception ...
+    # Setup an error hook.
     def error(&block)
       # TODO ...
+      # NOTE: maybe want to split bad_route_error(&block) out
+      # to handle errors that happen before the request is routed.
+      # Or just ignore it for now until there's a need for it.
     end
 
     # Rack app handler.
     def call(rack_env)
       env, bad_route = route_request(rack_env)
       if bad_route
-        return error_response(bad_route, nil, false)
+        return error_response(bad_route, {})
       end
 
       begin
@@ -217,9 +199,9 @@ module Twirp
       nil
     end
 
-    def run_after_hooks(env)
-      return unless @after_hooks
-      @after_hooks.each do |hook|
+    def run_success_hooks(env)
+      return unless @success_hooks
+      @success_hooks.each do |hook|
         twerr = hook.call(env)
         return twerr if twerr && twerr.is_a?(Twirp::Error)
       end
@@ -237,7 +219,7 @@ module Twirp
     end
 
     def success_response(resp_body, env)
-      if twerr = run_after_hooks(env)
+      if twerr = run_success_hooks(env)
         return error_response(twerr)
       end
       
@@ -245,14 +227,7 @@ module Twirp
       [200, headers, [resp_body]]
     end
 
-    def error_response(twirp_error, env, should_run_after_hooks = true)
-      if should_run_after_hooks
-        env[:twirp_error] = twirp_error
-        if twerr = run_after_hooks(env)
-          return error_response(twerr, false)
-        end
-      end
-
+    def error_response(twirp_error, env)
       status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twirp_error.code]
       headers = {'Content-Type' => 'application/json'}
       resp_body = JSON.generate(twirp_error.to_h)
