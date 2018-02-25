@@ -75,7 +75,7 @@ You can also mount onto a rails app:
 
 ```ruby
 App::Application.routes.draw do
-  mount service, at: service.path_prefix
+  mount service, at: service.full_name
 end
 ```
 

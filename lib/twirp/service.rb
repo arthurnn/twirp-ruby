@@ -37,31 +37,25 @@ module Twirp
         @package_name.to_s
       end
 
-      # Get configured service name as String.
-      # If not configured, it defaults to the class name.
+      # Service name as String.
+      # Defaults to the current class name.
       def service_name
-        sname = @service_name.to_s
-        sname.empty? ? self.name : sname
+        (@service_name || self.name).to_s
       end
 
-      # Base Twirp environment for each rpc method.
+      # Base Twirp environments for each rpc method.
       def base_envs
         @base_envs || {}
       end
 
-      # Service full name uniquelly identifies the service.
-      # It is the service name prefixed by the package name,
-      # for example "my.package.Haberdasher", or "Haberdasher" (if no package).
+      # Package and servicce name, as a unique identifier for the service,
+      # for example "example.v3.Haberdasher" (package "example.v3", service "Haberdasher").
+      # This can be used as a path prefix to route requests to the service, because a Twirp URL is:
+      # "#{BaseURL}/#{ServiceFullName}/#{Method]"
       def service_full_name
         package_name.empty? ? service_name : "#{package_name}.#{service_name}"
       end
 
-      # Path prefix that should be used to route requests to this service.
-      # It is based on the package and service name, in the expected Twirp URL format.
-      # The full URL would be: {BaseURL}/path_prefix/{MethodName}.
-      def path_prefix
-        "/twirp/#{service_full_name}" # e.g. "twirp/Haberdasher"
-      end
 
     end # class << self
 
@@ -113,12 +107,12 @@ module Twirp
       end
     end
 
-    def path_prefix
-      self.class.path_prefix
+    def name
+      self.class.service_name
     end
 
-    def service_full_name
-      self.class.service_full_name
+    def full_name
+      self.class.service_full_name # use to route requests to this servie
     end
 
 
@@ -137,8 +131,8 @@ module Twirp
       end
       
       path_parts = rack_request.fullpath.split("/")
-      if path_parts.size < 4 || path_parts[-2] != self.service_full_name || path_parts[-3] != "twirp"
-        return nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/twirp/(package.)?{Service}/{Method}", rack_request)
+      if path_parts.size < 3 || path_parts[-2] != self.full_name
+        return nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
       end
       method_name = path_parts[-1]
 
