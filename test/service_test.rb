@@ -147,12 +147,12 @@ class ServiceTest < Minitest::Test
       method: "POST", input: 'bad json', "CONTENT_TYPE" => "application/json"
     status, headers, body = haberdasher_service.call(rack_env)
 
-    assert_equal 400, status
+    assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'invalid_argument', 
-      "msg"  => 'Invalid request body for rpc method "MakeHat"',
-      "meta" => {"content_type" => "application/json"},
+      "code" => 'bad_route', 
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json',
+      "meta" => {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
@@ -161,12 +161,12 @@ class ServiceTest < Minitest::Test
       method: "POST", input: 'bad protobuf', "CONTENT_TYPE" => "application/protobuf"
     status, headers, body = haberdasher_service.call(rack_env)
 
-    assert_equal 400, status
+    assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'invalid_argument', 
-      "msg"  => 'Invalid request body for rpc method "MakeHat"',
-      "meta" => {"content_type" => "application/protobuf"},
+      "code" => 'bad_route', 
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf',
+      "meta" => {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
