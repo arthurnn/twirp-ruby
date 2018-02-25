@@ -66,19 +66,7 @@ module Twirp
     end # class << self
 
 
-    # Instantiate a new service with a handler.
-    # The handler must implemnt all rpc methods required by this service.
     def initialize(handler)
-      self.class.base_envs.each do |rpc_method, env|
-        meth = env[:handler_method]
-        if !handler.respond_to?(meth)
-          raise ArgumentError.new("Handler must respond to .#{meth}(input, env) in order to handle the rpc method #{rpc_method}.")
-        end
-        if handler.method(meth).arity != 2
-          raise ArgumentError.new("Hanler method #{meth} must accept exactly 2 arguments: #{meth}(input, env).")
-        end
-      end
-
       @handler = handler
     end
 
@@ -112,14 +100,13 @@ module Twirp
           return error_response(twerr, env)
         end
 
-        handler_output = @handler.send(env[:handler_method], env[:input], env)
-        if handler_output.is_a? Twirp::Error
-          return error_response(handler_output, env)
+        output = call_handler(env)
+        if output.is_a? Twirp::Error
+          return error_response(output, env)
         end
+        env[:output] = output
 
-        env[:output] = output_from_handler(handler_output, env)
-        encoded_resp = encode_output(env[:output], env[:output_class], env[:content_type])
-        return success_response(encoded_resp, env)
+        return success_response(env)
 
       rescue Twirp::Exception => twerr
         return error_response(twerr, env)
@@ -208,22 +195,34 @@ module Twirp
       nil
     end
 
-    def output_from_handler(handler_output, env)
-      case handler_output
-      when env[:output_class] then handler_output
-      when Hash then env[:output_class].new(handler_output)
-      when nil then env[:output_class].new # empty output with zero-values
+    # Call handler method and return an object of output_class or a Twirp::Error.
+    def call_handler(env)
+      out = nil
+      begin
+        out = @handler.send(env[:handler_method], env[:input], env)
+      rescue NoMethodError => e
+        return Twirp::Error.unimplemented("Handler does not respond to method #{env[:handler_method]}.")
+      rescue ArgumentError => e
+        return Twirp::Error.unimplemented("Handler method #{env[:handler_method]} must accept exactly 2 arguments (input, env).")
+      end
+
+      case out
+      when env[:output_class], Twirp::Error
+        return out
+      when Hash
+        return env[:output_class].new(out)
       else
-        raise TypeError.new("Unexpected type #{handler_output.class.name} returned by handler.#{env[:handler_method]}(input, env). Expected one of #{env[:output_class].name}, Hash (attributes) or nil (zero-values).")
+        Twirp::Error.internal("Handler method #{env[:handler_method]} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{out.class.name}.")
       end
     end
 
-    def success_response(resp_body, env)
+    def success_response(env)
       if twerr = run_success_hooks(env)
         return error_response(twerr)
       end
-      
+
       headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
+      resp_body = encode_output(env[:output], env[:output_class], env[:content_type])
       [200, headers, [resp_body]]
     end
 

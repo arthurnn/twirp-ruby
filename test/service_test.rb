@@ -46,17 +46,6 @@ class ServiceTest < Minitest::Test
     assert_equal "/twirp/EmptyService", empty_svc.path_prefix
   end
 
-  def test_init_failures
-    assert_raises ArgumentError do 
-      Example::Haberdasher.new() # handler is mandatory
-    end
-
-    err = assert_raises ArgumentError do 
-      Example::Haberdasher.new("fake handler")
-    end
-    assert_equal 'Handler must respond to .make_hat(input, env) in order to handle the rpc method MakeHat.', err.message
-  end
-
   def test_successful_json_request
     rack_env = json_req "/twirp/example.Haberdasher/MakeHat", inches: 10
     status, headers, body = haberdasher_service.call(rack_env)
@@ -196,19 +185,6 @@ class ServiceTest < Minitest::Test
     assert_equal Example::Hat.new(inches: 11, color: ""), Example::Hat.decode(body[0])
   end
 
-  # Handler should be able to return nil, as a message with all zero-values
-  def test_handler_returns_nil
-    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
-      nil
-    end)
-
-    rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
-    status, headers, body = svc.call(rack_env)
-
-    assert_equal 200, status
-    assert_equal Example::Hat.new(inches: 0, color: ""), Example::Hat.decode(body[0])
-  end
-
   # Handler should be able to return Twirp::Error values, that will trigger error responses
   def test_handler_returns_twirp_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size|
@@ -244,7 +220,7 @@ class ServiceTest < Minitest::Test
   def test_handler_method_can_set_response_headers_through_the_env
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       env[:http_response_headers]["Cache-Control"] = "public, max-age=60"
-      nil
+      {}
     end)
 
     rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
@@ -255,13 +231,58 @@ class ServiceTest < Minitest::Test
     assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp::Service
   end
 
+  def test_handler_returns_invalid_type_nil
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      nil
+    end)
+
+    rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg" => "Handler method make_hat expected to return one of Example::Hat, Hash or Twirp::Error, but returned NilClass.",
+    }, JSON.parse(body[0]))
+  end
+
+  def test_handler_returns_invalid_type_string
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      "bad type"
+    end)
+
+    rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg" => "Handler method make_hat expected to return one of Example::Hat, Hash or Twirp::Error, but returned String.",
+    }, JSON.parse(body[0]))
+  end
+
+  def test_handler_not_implementing_method
+    svc = Example::Haberdasher.new("foo")
+
+    rack_env = proto_req "/twirp/example.Haberdasher/MakeHat", Example::Size.new
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 501, status
+    assert_equal({
+      "code" => 'unimplemented',
+      "msg" => "Handler does not respond to method make_hat.",
+    }, JSON.parse(body[0]))
+  end
+
+  # TODO: test_handler_returns_invalid_attributes (ArgumentError should be handled)
+
   # TODO: test_handler_raises_standard_error
 
   def test_before_hook_simple
     handler_method_called = false
-    handler = HaberdasherHandler.new do |size|
+    handler = HaberdasherHandler.new do |size, env|
       handler_method_called = true
-      nil
+      {}
     end
 
     called_with_env = nil
@@ -292,7 +313,7 @@ class ServiceTest < Minitest::Test
     val = nil
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       val = env[:from_the_hook]
-      nil
+      {}
     end)
     svc.before do |env, rack_env|
       env[:from_the_hook] = "hello handler"
@@ -310,7 +331,7 @@ class ServiceTest < Minitest::Test
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
-      nil
+      {}
     end)
     svc.before do |env, rack_env|
       return Twirp::Error.internal "error from before hook"
@@ -333,7 +354,7 @@ class ServiceTest < Minitest::Test
       handler_called = true
       refute_nil env[:from_hook_1]
       refute_nil env[:from_hook_2]
-      nil
+      {}
     end)
     svc.before do |env, rack_env|
       assert_nil env[:from_hook_1]
@@ -359,7 +380,7 @@ class ServiceTest < Minitest::Test
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
-      nil
+      {}
     end)
     svc.before do |env, rack_env|
       hook1_called = true
@@ -501,7 +522,7 @@ class ServiceTest < Minitest::Test
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
-      nil
+      {}
     end)
     svc.success do |env|
       hook1_called = true
@@ -527,7 +548,7 @@ class ServiceTest < Minitest::Test
     refute handler_called
   end
 
-  # TODO: test_before_hook_raising_exception_cancels_request
+  # TODO: test_success_hook_raising_exception_cancels_request
 
 
 
