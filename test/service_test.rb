@@ -204,22 +204,6 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  # Handler should be able to raise a Twirp::Exception, that will trigger error responses
-  def test_handler_raises_twirp_exception
-    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
-      raise Twirp::Exception.new(:invalid_argument, "I don't like that size")
-    end)
-
-    rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
-    status, headers, body = svc.call(rack_env)
-    assert_equal 400, status
-    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
-    assert_equal({
-      "code" => 'invalid_argument', 
-      "msg" => "I don't like that size",
-    }, JSON.parse(body[0]))
-  end
-
   def test_handler_method_can_set_response_headers_through_the_env
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       env[:http_response_headers]["Cache-Control"] = "public, max-age=60"
