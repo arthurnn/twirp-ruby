@@ -83,7 +83,7 @@ Twirp services accept both Protobuf and JSON messages. It is easy to `curl` your
 
 ```sh
 curl --request POST \
-  --url http://localhost:8080/twirp/example.HelloWorld/Hello \
+  --url http://localhost:8080/example.HelloWorld/Hello \
   --header 'content-type: application/json' \
   --data '{"name":"World"}'
 ```

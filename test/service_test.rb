@@ -483,7 +483,7 @@ class ServiceTest < Minitest::Test
     refute handler_called
   end
 
-  def test_on_success_simple
+  def test_on_success_has_env_output
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |input, env|
       env[:handler_called] = true
       {inches: 88, color: "blue"}
@@ -571,6 +571,15 @@ class ServiceTest < Minitest::Test
       "meta" => {"cause"=>"ZeroDivisionError"},
     }, JSON.parse(body[0]))
   end
+
+  # TODO test_on_error_after_on_rpc_routed_fails
+  # TODO test_on_error_after_on_rpc_routed_raises_exception
+  # TODO test_on_error_after_handler_returns_twirp_error
+  # TODO test_on_error_after_handler_raises_exception
+  # TODO test_on_error_after_on_success_raises_exception
+  # TODO test_on_error_multiple_run_in_order
+  # TODO test_on_error_can_modify_the_error
+  # TODO test_on_error_raising_exception_is_handled_as_internal
 
 
 

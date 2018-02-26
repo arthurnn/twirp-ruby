@@ -88,7 +88,7 @@ module Twirp
     # Recommended when ENV['RACK_ENV'] == 'development'
     def on_error_with_cause_show_backtrace!
       on_error do |twerr, env|
-        puts twerr.cause if twerr.cause
+        puts "[Error] #{twerr.cause}\n#{twerr.cause.backtrace.join("\n")}" if twerr.cause
       end
     end
 
@@ -105,7 +105,7 @@ module Twirp
       begin
         env, bad_route = route_request(rack_env)
         if bad_route
-          return error_response(bad_route, nil)
+          return error_response(bad_route, {}, false)
         end
       
         @on_rpc_routed.each do |hook|
@@ -124,7 +124,12 @@ module Twirp
         if self.class.raise_exceptions
           raise e
         else
-          return error_response(Twirp::Error.internal_with(e), env)
+          twerr = Twirp::Error.internal_with(e)
+          begin
+            return error_response(twerr, env)
+          rescue => e
+            return error_response(twerr, env, false)
+          end
         end
       end
     end
@@ -218,10 +223,10 @@ module Twirp
       [200, headers, [resp_body]]
     end
 
-    def error_response(twerr, env)
+    def error_response(twerr, env, run_on_error_hooks = true)
       @on_error.each do |hook|
         hook.call(twerr, env)
-      end if env
+      end if run_on_error_hooks
 
       status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
       headers = {'Content-Type' => 'application/json'}
