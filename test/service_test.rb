@@ -573,35 +573,200 @@ class ServiceTest < Minitest::Test
   end
 
   def test_on_error_after_before_fails
-    
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      {}
+    end)
+    svc.before do |rack_env, env|
+      return Twirp::Error.internal "before failed"
+    end
+    error_called = false
+    svc.on_error do |twerr, env|
+      error_called = true
+      assert_equal :internal, twerr.code
+      assert_equal "before failed", twerr.msg
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'intenal', 
+      "msg"  => 'before failed',
+    }, JSON.parse(body[0]))
+    assert error_called
   end
 
   def test_on_error_after_before_raises_exception
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      {}
+    end)
+    svc.before do |rack_env, env|
+      1 / 0 # divided by 0
+    end
+    Example::Haberdasher.raise_exceptions = false
 
+    error_called = false
+    svc.on_error do |twerr, env|
+      error_called = true
+    end
+
+    exception_raised_called = false
+    svc.exception_raised do |e, env|
+      exception_raised_called = true
+      assert_equal "divided by 0", e.message
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg"  => "divided by 0",
+      "meta" => {"cause"=>"ZeroDivisionError"},
+    }, JSON.parse(body[0]))
+    assert error_called
+    assert exception_raised_called
   end
 
   def test_on_error_after_handler_returns_twirp_error
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      return Twirp::Error.internal "handler error"
+    end)
+    
+    error_called = false
+    svc.on_error do |twerr, env|
+      error_called = true
+      assert_equal :internal, twerr.code
+      assert_equal "handler error", twerr.msg
+    end
 
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'intenal', 
+      "msg"  => 'handler error',
+    }, JSON.parse(body[0]))
+    assert error_called
   end
 
   def test_on_error_after_handler_raises_exception
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      1 / 0 # divided by 0
+    end)
+    Example::Haberdasher.raise_exceptions = false
 
+    error_called = false
+    svc.on_error do |twerr, env|
+      error_called = true
+    end
+
+    exception_raised_called = false
+    svc.exception_raised do |e, env|
+      exception_raised_called = true
+      assert_equal "divided by 0", e.message
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg"  => "divided by 0",
+      "meta" => {"cause"=>"ZeroDivisionError"},
+    }, JSON.parse(body[0]))
+    assert error_called
+    assert exception_raised_called
   end
 
-  def test_on_error_after_success_raises_exception
+  def test_on_error_is_not_called_after_success_raises_exception
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      {}
+    end)
+    svc.on_success do |env|
+      1 / 0 # divided by 0
+    end
+    Example::Haberdasher.raise_exceptions = false
 
+    error_called = false
+    svc.on_error do |twerr, env|
+      error_called = true
+    end
+
+    exception_raised_called = false
+    svc.exception_raised do |e, env|
+      exception_raised_called = true
+      assert_equal "divided by 0", e.message
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg"  => "divided by 0",
+      "meta" => {"cause"=>"ZeroDivisionError"},
+    }, JSON.parse(body[0]))
+    refute error_called # << NOT CALLED
+    assert exception_raised_called
   end
 
   def test_on_error_multiple_run_in_order
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      env[:from_handler] = true
+      Twirp::Error.not_found "my friend"
+    end)
+    svc.on_error do |twerr, env|
+      refute_nil env[:from_handler]
+      assert_nil env[:from_hook_1]
+      assert_nil env[:from_hook_2]
+      env[:from_hook_1] = true
+    end
+    hook2_called = false
+    svc.on_error do |twerr, env|
+      refute_nil env[:from_handler]
+      refute_nil env[:from_hook_1]
+      assert_nil env[:from_hook_2]
+      env[:from_hook_2] = true
+      hook2_called = true
+    end
 
-  end
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
 
-  def test_on_error_can_modify_the_error
-
+    assert_equal 404, status
+    assert hook2_called
   end
 
   def test_on_error_raising_exception_is_handled_as_internal
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      Twirp::Error.permission_denied "blah blah"
+    end)
+    svc.on_error do |twerr, env|
+      1 / 0 # divided by 0
+    end
+    Example::Haberdasher.raise_exceptions = false
 
+    exception_raised_called = false
+    svc.exception_raised do |e, env|
+      exception_raised_called = true
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    assert_equal({
+      "code" => 'internal',
+      "msg"  => "divided by 0",
+      "meta" => {"cause"=>"ZeroDivisionError"},
+    }, JSON.parse(body[0]))
+    assert exception_raised_called
   end
 
 
