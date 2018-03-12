@@ -159,22 +159,22 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  def test_bad_route_does_not_trigger_hooks # because they don't have a valid env
+  def test_bad_route_triggers_on_error_hooks
     svc = haberdasher_service
 
     before_called = false
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       before_called = true
     end
 
-    on_success_called = false
+    success_called = false
     svc.on_success do |env|
-      on_success_called = true
+      success_called = true
     end
 
-    on_error_called = false
+    error_called = false
     svc.on_error do |twerr, env|
-      on_error_called = true
+      error_called = true
     end
 
     rack_env = json_req "/example.Haberdasher/BadRouteMethod", inches: 10
@@ -182,8 +182,8 @@ class ServiceTest < Minitest::Test
 
     assert_equal 404, status
     refute before_called
-    refute on_success_called
-    refute on_error_called
+    refute success_called
+    assert error_called # << on_error called
   end
 
   def test_long_base_url
@@ -333,7 +333,7 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  def test_on_rpc_routed_simple
+  def test_before_simple
     handler_method_called = false
     handler = HaberdasherHandler.new do |size, env|
       handler_method_called = true
@@ -343,7 +343,7 @@ class ServiceTest < Minitest::Test
     called_with_env = nil
     called_with_rack_env = nil
     svc = Example::Haberdasher.new(handler)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       env[:raw_contet_type] = rack_env["CONTENT_TYPE"]
       called_with_env = env
       called_with_rack_env = rack_env
@@ -364,13 +364,13 @@ class ServiceTest < Minitest::Test
     assert_equal 200, status, "response is successful"
   end
 
-  def test_on_rpc_routed_add_data_in_env_for_the_handler_method
+  def test_before_add_data_in_env_for_the_handler_method
     val = nil
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       val = env[:from_the_hook]
       {}
     end)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       env[:from_the_hook] = "hello handler"
     end
 
@@ -381,13 +381,13 @@ class ServiceTest < Minitest::Test
     assert_equal "hello handler", val
   end
 
-  def test_on_rpc_routed_returning_twirp_error_cancels_request
+  def test_before_returning_twirp_error_cancels_request
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
       {}
     end)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       return Twirp::Error.internal "error from before hook"
     end
 
@@ -402,13 +402,13 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  def test_on_rpc_routed_raising_exception_cancels_request
+  def test_before_raising_exception_cancels_request
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
       {}
     end)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       1 / 0 # divided by 0.
     end
 
@@ -425,7 +425,7 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  def test_on_rpc_routed_multiple_run_in_order
+  def test_before_multiple_run_in_order
     handler_called = false
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       handler_called = true
@@ -433,12 +433,12 @@ class ServiceTest < Minitest::Test
       refute_nil env[:from_hook_2]
       {}
     end)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       assert_nil env[:from_hook_1]
       assert_nil env[:from_hook_2]
       env[:from_hook_1] = true
     end
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       refute_nil env[:from_hook_1]
       assert_nil env[:from_hook_2]
       env[:from_hook_2] = true
@@ -451,7 +451,7 @@ class ServiceTest < Minitest::Test
     assert_equal true, handler_called
   end
 
-  def test_on_rpc_routed_multiple_first_returning_error_halts_chain
+  def test_before_multiple_first_returning_error_halts_chain
     hook1_called = false
     hook2_called = false
     handler_called = false
@@ -459,11 +459,11 @@ class ServiceTest < Minitest::Test
       handler_called = true
       {}
     end)
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       hook1_called = true
       return Twirp::Error.internal "hook1 failed"
     end
-    svc.on_rpc_routed do |rack_env, env|
+    svc.before do |rack_env, env|
       hook2_called = true
       return Twirp::Error.internal "hook2 failed"
     end
@@ -502,7 +502,7 @@ class ServiceTest < Minitest::Test
     assert success_called
   end
 
-  def test_on_success_does_not_trigger_on_error
+  def test_on_success_does_not_trigger_error
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |input, env|
       return Twirp::Error.internal "error from handler"
     end)
@@ -572,14 +572,38 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
-  # TODO test_on_error_after_on_rpc_routed_fails
-  # TODO test_on_error_after_on_rpc_routed_raises_exception
-  # TODO test_on_error_after_handler_returns_twirp_error
-  # TODO test_on_error_after_handler_raises_exception
-  # TODO test_on_error_after_on_success_raises_exception
-  # TODO test_on_error_multiple_run_in_order
-  # TODO test_on_error_can_modify_the_error
-  # TODO test_on_error_raising_exception_is_handled_as_internal
+  def test_on_error_after_before_fails
+    
+  end
+
+  def test_on_error_after_before_raises_exception
+
+  end
+
+  def test_on_error_after_handler_returns_twirp_error
+
+  end
+
+  def test_on_error_after_handler_raises_exception
+
+  end
+
+  def test_on_error_after_success_raises_exception
+
+  end
+
+  def test_on_error_multiple_run_in_order
+
+  end
+
+  def test_on_error_can_modify_the_error
+
+  end
+
+  def test_on_error_raising_exception_is_handled_as_internal
+
+  end
+
 
 
 

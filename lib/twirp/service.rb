@@ -56,9 +56,9 @@ module Twirp
         package_name.empty? ? service_name : "#{package_name}.#{service_name}"
       end
 
-      # Exceptions raised by handlers are wrapped and returned as Twirp internal errors. 
-      # Set this class property to true to let them be raised, which is useful for testing.
-      # Recommended when ENV['RACK_ENV'] == 'test'
+      # Raise exceptions instead of handling them with exception_raised hooks.
+      # Useful during tests to easily debug and catch unexpected exceptions.
+      # Default false.
       attr_accessor :raise_exceptions
 
     end # class << self
@@ -67,29 +67,10 @@ module Twirp
     def initialize(handler)
       @handler = handler
 
-      @on_rpc_routed = []
+      @before = []
       @on_success = []
       @on_error = []
-    end
-
-    def on_rpc_routed(&block)
-      @on_rpc_routed << block
-    end
-
-    def on_success(&block)
-      @on_success << block
-    end
-
-    def on_error(&block)
-      @on_error << block      
-    end
-
-    # Error hook to show wrapped exceptions in the console.
-    # Recommended when ENV['RACK_ENV'] == 'development'
-    def on_error_with_cause_show_backtrace!
-      on_error do |twerr, env|
-        puts "[Error] #{twerr.cause}\n#{twerr.cause.backtrace.join("\n")}" if twerr.cause
-      end
+      @exception_raised = []
     end
 
     def name
@@ -100,80 +81,81 @@ module Twirp
       self.class.service_full_name # use to route requests to this servie
     end
 
+    # Setup hook blocks
+    def before(&block) @before << block; end
+    def on_success(&block) @on_success << block; end
+    def on_error(&block) @on_error << block; end
+    def exception_raised(&block) @exception_raised << block; end
+
     # Rack app handler.
     def call(rack_env)
       begin
-        env, bad_route = route_request(rack_env)
-        if bad_route
-          return error_response(bad_route, {}, false)
-        end
+        env = {}
+        bad_route = route_request(rack_env, env)
+        return error_response(bad_route, env) if bad_route
       
-        @on_rpc_routed.each do |hook|
-          twerr = hook.call(rack_env, env)
-          return error_response(twerr, env) if twerr && twerr.is_a?(Twirp::Error)
+        @before.each do |hook|
+          result = hook.call(rack_env, env)
+          return error_response(result, env) if result.is_a? Twirp::Error
         end
           
         output = call_handler(env)
-        if output.is_a? Twirp::Error
-          return error_response(output, env)
-        end
-
+        return error_response(output, env) if output.is_a? Twirp::Error
         return success_response(output, env)
 
       rescue => e
-        if self.class.raise_exceptions
-          raise e
-        else
-          twerr = Twirp::Error.internal_with(e)
-          begin
-            return error_response(twerr, env)
-          rescue => e
-            return error_response(twerr, env, false)
-          end
+        raise e if self.class.raise_exceptions
+        begin
+          @exception_raised.each{|hook| hook.call(e, env) }
+        rescue => hook_e
+          e = hook_e
         end
+        
+        twerr = Twirp::Error.internal_with(e)
+        return error_response(twerr, env)
       end
     end
 
 
   private
 
-    def route_request(rack_env)
+    # Parse request and fill env with rpc data.
+    # Returns a bad_route error if something went wrong.
+    def route_request(rack_env, env)
       rack_request = Rack::Request.new(rack_env)
 
       if rack_request.request_method != "POST"
-        return nil, bad_route_error("HTTP request method must be POST", rack_request)
+        return bad_route_error("HTTP request method must be POST", rack_request)
       end
 
       content_type = rack_request.get_header("CONTENT_TYPE")
       if content_type != "application/json" && content_type != "application/protobuf"
-        return nil, bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of application/json or application/protobuf", rack_request)
+        return bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of application/json or application/protobuf", rack_request)
       end
+      env[:content_type] = content_type
       
       path_parts = rack_request.fullpath.split("/")
       if path_parts.size < 3 || path_parts[-2] != self.full_name
-        return nil, bad_route_error("Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
+        return bad_route_error("Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
       end
       method_name = path_parts[-1]
 
       base_env = self.class.base_envs[method_name]
       if !base_env
-        return nil, bad_route_error("Invalid rpc method #{method_name.inspect}", rack_request)
+        return bad_route_error("Invalid rpc method #{method_name.inspect}", rack_request)
       end
+      env.merge!(base_env) # :rpc_method, :input_class, :output_class, :handler_method
 
       input = nil
       begin
-        input = decode_input(rack_request.body.read, base_env[:input_class], content_type)
+        input = decode_input(rack_request.body.read, env[:input_class], content_type)
       rescue => e
-        return nil, bad_route_error("Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}", rack_request)
+        return bad_route_error("Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}", rack_request)
       end
-      
-      env = base_env.merge({
-        content_type: content_type,
-        input: input,
-        http_response_headers: {},
-      })
 
-      return env, nil
+      env[:input] = input
+      env[:http_response_headers] = {}
+      return
     end
 
     def bad_route_error(msg, req)
@@ -213,25 +195,47 @@ module Twirp
     end
 
     def success_response(output, env)
-      env[:output] = output
-      @on_success.each do |hook| 
-        hook.call(env)
-      end
+      begin
+        env[:output] = output
+        @on_success.each{|hook| hook.call(env) }
 
-      headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
-      resp_body = encode_output(output, env[:output_class], env[:content_type])
-      [200, headers, [resp_body]]
+        headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
+        resp_body = encode_output(output, env[:output_class], env[:content_type])
+        [200, headers, [resp_body]]
+
+      rescue => e
+        return exception_response(e, env)
+      end
     end
 
-    def error_response(twerr, env, run_on_error_hooks = true)
-      @on_error.each do |hook|
-        hook.call(twerr, env)
-      end if run_on_error_hooks
+    def error_response(twerr, env)
+      begin
+        @on_error.each{|hook| hook.call(twerr, env) }
 
-      status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
-      headers = {'Content-Type' => 'application/json'}
+        status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
+        resp_body = JSON.generate(twerr.to_h)
+        [status, error_response_headers, [resp_body]]
+
+      rescue => e
+        return exception_response(e, env)
+      end
+    end
+
+    def exception_response(e, env)
+      raise e if self.class.raise_exceptions
+      begin
+        @exception_raised.each{|hook| hook.call(e, env) }
+      rescue => hook_e
+        e = hook_e
+      end
+
+      twerr = Twirp::Error.internal_with(e)
       resp_body = JSON.generate(twerr.to_h)
-      [status, headers, [resp_body]]
+      [500, error_response_headers, [resp_body]]
+    end
+
+    def error_response_headers
+      {'Content-Type' => 'application/json'}
     end
 
   end
