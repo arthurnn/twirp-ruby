@@ -116,6 +116,24 @@ module Twirp
       end
     end
 
+    # Call the handler method with input attributes or protobuf object.
+    # Returns a proto object (response) or a Twirp::Error.
+    # Hooks are not called and exceptions are raised instead of being wrapped.
+    # This is useful for unit testing the handler. The env should include
+    # fake data that is used by the handler, replicating middleware and before hooks.
+    def call_rpc(rpc_method, input={}, env={})
+      base_env = self.class.base_envs[rpc_method.to_s]
+      return Twirp::Error.bad_route("Invalid rpc method #{rpc_method.to_s.inspect}") unless base_env
+
+      env = env.merge(base_env)
+      input = env[:input_class].new(input) if input.is_a? Hash
+      env[:input] = input
+      env[:content_type] ||= "application/protobuf"
+      env[:http_response_headers] = {}
+
+      call_handler(env)
+    end
+
 
   private
 
@@ -162,17 +180,17 @@ module Twirp
       Twirp::Error.bad_route msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
     end
 
-    def decode_input(body, input_class, content_type)
+    def decode_input(bytes, input_class, content_type)
       case content_type
-      when "application/protobuf" then input_class.decode(body)
-      when "application/json"     then input_class.decode_json(body)
+      when "application/protobuf" then input_class.decode(bytes)
+      when "application/json"     then input_class.decode_json(bytes)
       end
     end
 
-    def encode_output(output, output_class, content_type)
+    def encode_output(obj, output_class, content_type)
       case content_type
-      when "application/protobuf" then output_class.encode(output)
-      when "application/json"     then output_class.encode_json(output)
+      when "application/protobuf" then output_class.encode(obj)
+      when "application/json"     then output_class.encode_json(obj)
       end
     end
 
