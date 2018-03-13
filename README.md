@@ -41,7 +41,7 @@ message HelloResponse {
 
 Congrats! You already have everything you need to make clients, message routing, serialization and also reasonable documentation for your service.
 In addition, protobuf messages are designed to be updated while keeping backwards compatibility with older versions of the service. Protobuf messages
-are very efficient in terms of CPU and bandwith, but since this is a Twirp service, you can also use JSON for convenience.
+are very efficient in terms of CPU and bandwith, and since this is a Twirp service, you can also use JSON for convenience.
 
 #### Generate code
 
@@ -58,7 +58,7 @@ This will generate the `helloworld_pb.rb` and `helloworld_twirp.rb` files with p
 Your Service Handler is a simple class that implements each method defined in the proto file.
 The method `intput` is an instance of the protobuf message, already serialized. The Twirp `env`
 contains metadata related to the request, and other fields that could have been set from before
-hooks (e.g. `env[:user_id]` for authentication).
+hooks (e.g. `env[:user_id]`).
 
 ```ruby
 class HelloWorldHandler
@@ -151,19 +151,10 @@ routing -> before -> handler
                      ! exception_raised -> on_error
 ```
 
-Example code with hooks:
-
+Hooks are setup in the service instance:
 
 ```ruby
-class HaberdasherHandler
-  def make_hat(size, env)
-    return {}
-  end
-end
-
-handler = HaberdasherHandler.new
-svc = Example::Haberdasher.new(handler)
-
+svc = Example::HelloWorld.new(handler)
 
 svc.before do |rack_env, env|
   # Runs if properly routed to an rpc method, but before calling the method handler.
@@ -171,12 +162,14 @@ svc.before do |rack_env, env|
   # The Twirp env has the same routing info as in the handler method, e.g. :rpc_method, :input and :input_class.
   # Returning a Twirp::Error here cancels the request, and the error is returned instead.
   # If an exception is raised, the exception_raised hook will be called followed by on_error.
+  env[:user_id] = authenticate(rack_env)
 end
 
 svc.on_success do |env|
   # Runs after the rpc method is handled, if it didn't return Twirp errors or raised exceptions.
   # The env[:output] contains the serialized message of class env[:ouput_class].
   # If an exception is raised, the exception_raised hook will be called.
+  success_count += 1
 end
 
 svc.on_error do |twerr, env|
@@ -186,6 +179,7 @@ svc.on_error do |twerr, env|
   #  * hander methods returning Twirp errors or raising exceptions.
   # Raised exceptions are wrapped with Twirp::Error.internal_with(e).
   # If an exception is raised here, the exception_raised hook will be called.
+  error_count += 1
 end
 
 svc.exception_raised do |e, env|
