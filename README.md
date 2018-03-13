@@ -5,7 +5,8 @@ Ruby implementation for for [Twirp](https://github.com/twitchtv/twirp). It inclu
  * [twirp gem](https://rubygems.org/gems/twirp): with library code like `Twirp::Error` and `Twirp::Service`.
  * `protoc-gen-twirp_ruby` protoc plugin to generate Ruby services and clients from a Protobuf file. 
 
-### Installation
+
+## Installation
 
 Install the gem with `gem install twirp` or in Bundler `gem "twirp"`.
 
@@ -16,7 +17,8 @@ And then use `go get` to install the ruby_twirp protoc plugin:
 ➜ go get github.com/cyrusaf/ruby-twirp/protoc-gen-twirp_ruby
 ```
 
-### Usage Example
+
+## Usage Example
 
 Let's make a `HelloWorld` service in Twirp. Start with a [Protobuf](https://developers.google.com/protocol-buffers/docs/proto3) file:
 
@@ -40,10 +42,9 @@ message HelloResponse {
 ```
 
 Congrats! You already have everything you need to make clients, message routing, serialization and also reasonable documentation for your service.
-In addition, protobuf messages are designed to be updated while keeping backwards compatibility with older versions of the service. Protobuf messages
-are very efficient in terms of CPU and bandwith, and since this is a Twirp service, you can also use JSON for convenience.
 
-#### Generate code
+
+### Generate code
 
 Run the `protoc` binary with the twirp_ruby plugin to auto-generate code:
 
@@ -51,14 +52,15 @@ Run the `protoc` binary with the twirp_ruby plugin to auto-generate code:
 ➜ protoc --proto_path=. ./hello_world.proto --ruby_out=gen --twirp_ruby_out=gen
 ```
 
-This will generate the `helloworld_pb.rb` and `helloworld_twirp.rb` files with proto messages, service and client code.
+This will generate `gen/helloworld_pb.rb` and `gen/helloworld_twirp.rb` files with proto messages, service and client code.
+
 
 #### Implement the Service Handler
 
 Your Service Handler is a simple class that implements each method defined in the proto file.
-The method `intput` is an instance of the protobuf message, already serialized. The Twirp `env`
+For each method, the `intput` is an instance of the protobuf request message. The Twirp `env`
 contains metadata related to the request, and other fields that could have been set from before
-hooks (e.g. `env[:user_id]`).
+hooks (e.g. `env[:user_id]` from authentication).
 
 ```ruby
 class HelloWorldHandler
@@ -68,7 +70,7 @@ class HelloWorldHandler
 end
 ```
 
-#### Mount the service to receive HTTP requests
+### Mount the service to receive HTTP requests
 
 The service is a Rack app:
 
@@ -81,7 +83,7 @@ service = Example::HelloWorld.new(handler) # twirp-generated
 Rack::Handler::WEBrick.run service
 ```
 
-You can also mount onto a rails app:
+You can also mount onto a Rails route:
 
 ```ruby
 App::Application.routes.draw do
@@ -89,7 +91,7 @@ App::Application.routes.draw do
 end
 ```
 
-#### Test with curl requests
+### Test with curl requests
 
 Twirp accepts both Protobuf and JSON messages. It is easy to `curl` your service with JSON to get a response:
 
@@ -100,7 +102,7 @@ curl --request POST \
   --data '{"name": "World"}'
 ```
 
-#### Unit Test the Service Handler
+### Unit Test the Service Handler
 
 Twirp already takes care of HTTP routing and serialization, you don't really need to build fake HTTP requests in your tests.
 Instead, you should focus on testing your Service Handler. For convenience, the Twirp Service has the method
@@ -126,7 +128,7 @@ end
 ```
 
 
-## Hooks
+## Service Hooks
 
 In the lifecycle of a request, the Twirp service starts by routing the request to a valid
 RPC method. If routing fails, the `on_error` hook is called with a bad_route error. 
@@ -187,3 +189,8 @@ svc.exception_raised do |e, env|
   puts "[Error] #{e}\n#{e.backtrace.join("\n")}"
 end
 ```
+
+
+## Clients
+
+TODO: clients and client code-generation are pending ...
