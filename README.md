@@ -91,12 +91,10 @@ App::Application.routes.draw do
 end
 ```
 
-### Test with curl requests
-
-Twirp accepts both Protobuf and JSON messages. It is easy to `curl` your service with JSON to get a response:
+Start the server and `curl` with JSON to test if everything works:
 
 ```sh
-curl --request POST \
+➜ curl --request POST \
   --url http://localhost:8080/example.HelloWorld/Hello \
   --header 'Content-Type: application/json' \
   --data '{"name": "World"}'
@@ -110,20 +108,13 @@ Instead, you should focus on testing your Service Handler. For convenience, the 
 
 ```ruby
 require 'minitest/autorun'
-require 'twirp/test'
-
 class HelloWorldHandlerTest < Minitest::Test
 
   def test_hello_responds_with_name
-    out = service.test_call :Hello, name: "World"
+    service = Example::HelloWorld.new(HelloWorldHandler.new())
+    out = service.call_rpc :Hello, name: "World"
     assert_equal "Hello World", out.message
   end
-
-  def service
-    handler = HelloWorldHandler.new()
-    service = Example::HelloWorld.new(handler)
-  end
-
 end
 ```
 
