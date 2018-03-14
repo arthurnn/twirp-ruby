@@ -7,4 +7,10 @@ module Example
     service "Haberdasher"
     rpc :HelloWorld, HelloWorldRequest, HelloWorldResponse, :handler_method => :hello_world
   end
+
+  class HaberdasherProtoClient < Twirp::ProtoClient
+    package "example"
+    service "Haberdasher"
+    rpc :HelloWorld, HelloWorldRequest, HelloWorldResponse, :handler_method => :hello_world
+  end
 end
