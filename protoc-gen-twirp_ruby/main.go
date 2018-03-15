@@ -80,17 +80,11 @@ func (g *generator) generateFile(file *descriptor.FileDescriptorProto) *plugin.C
 	for i, service := range file.Service {
 		serviceName := serviceName(service)
 		g.P(fmt.Sprintf("%sclass %sService < Twirp::Service", indent, CamelCase(serviceName)))
-		if pkgName != "" {
-			g.P(fmt.Sprintf(`%s  package "%s"`, indent, pkgName))
-		}
-		g.P(fmt.Sprintf(`%s  service "%s"`, indent, serviceName))
-		for _, method := range service.GetMethod() {
-			methName := methodName(method)
-			inputName := methodInputName(method)
-			outputName := methodOutputName(method)
-			g.P(fmt.Sprintf(`%s  rpc :%s, %s, %s, :handler_method => :%s`,
-				indent, methName, inputName, outputName, SnakeCase(methName)))
-		}
+		g.generateDSL(file, service, indent, serviceName, pkgName)
+		g.P(fmt.Sprintf(`%send`, indent))
+		g.P(``)
+		g.P(fmt.Sprintf("%sclass %sProtoClient < Twirp::ProtoClient", indent, CamelCase(serviceName)))
+		g.generateDSL(file, service, indent, serviceName, pkgName)
 		g.P(fmt.Sprintf(`%send`, indent))
 		if i < len(file.Service)-1 {
 			g.P(``)
@@ -113,6 +107,21 @@ func (g *generator) P(args ...string) {
 		g.output.WriteString(v)
 	}
 	g.output.WriteByte('\n')
+}
+
+func (g *generator) generateDSL(file *descriptor.FileDescriptorProto, service *descriptor.ServiceDescriptorProto, indent, serviceName, pkgName string) {
+	if pkgName != "" {
+		g.P(fmt.Sprintf(`%s  package "%s"`, indent, pkgName))
+	}
+	g.P(fmt.Sprintf(`%s  service "%s"`, indent, serviceName))
+	for _, method := range service.GetMethod() {
+		methName := methodName(method)
+		inputName := methodInputName(method)
+		outputName := methodOutputName(method)
+		g.P(fmt.Sprintf(`%s  rpc :%s, %s, %s, :handler_method => :%s`,
+			indent, methName, inputName, outputName, SnakeCase(methName)))
+	}
+
 }
 
 func rubyFileName(f *descriptor.FileDescriptorProto) string {

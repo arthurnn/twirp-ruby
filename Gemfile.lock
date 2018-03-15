@@ -1,13 +1,14 @@
 PATH
   remote: .
   specs:
-    twirp (0.0.1)
+    twirp (0.1.0)
       google-protobuf (>= 3.0.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
     google-protobuf (3.5.1.2)
+    multipart-post (2.0.0)
 
 PLATFORMS
   ruby
@@ -17,4 +18,4 @@ DEPENDENCIES
   twirp!
 
 BUNDLED WITH
-   1.14.6
+   1.16.1
