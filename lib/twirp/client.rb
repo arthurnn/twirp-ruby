@@ -1,6 +1,9 @@
 require 'faraday'
 require 'json'
 
+require_relative "error"
+require_relative "service_dsl"
+
 module Twirp
 
   class Client
@@ -8,8 +11,8 @@ module Twirp
     # DSL to define a client with package, service and rpcs.
     extend ServiceDSL
     
-    # Use a service class to define the same package, service and rpc methods.
-    def self.for_service(svclass)
+    # DSL (alternative) to define a client from the service class.
+    def self.client_for(svclass)
       package svclass.package_name
       service svclass.service_name
       svclass.rpcs.each do |rpc_method, rpcdef|

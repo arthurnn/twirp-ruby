@@ -7,6 +7,7 @@ module Twirp
 
   class Service
 
+    # DSL to define a service with package, service and rpcs.
     extend ServiceDSL
 
     class << self
