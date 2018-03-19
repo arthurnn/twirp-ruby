@@ -13,14 +13,14 @@ class ServiceTest < Minitest::Test
   end
 
   # The rpc DSL should properly build the base Twirp environment for each rpc method.
-  def test_base_envs_accessor
-    assert_equal 1, Example::Haberdasher.base_envs.size
+  def test_rpcs_accessor
+    assert_equal 1, Example::Haberdasher.rpcs.size
     assert_equal({
       rpc_method: :MakeHat,
       input_class: Example::Size,
       output_class: Example::Hat,
-      handler_method: :make_hat,
-    }, Example::Haberdasher.base_envs["MakeHat"])
+      ruby_method: :make_hat,
+    }, Example::Haberdasher.rpcs["MakeHat"])
   end
 
   # DSL package and service define the proper data on the service

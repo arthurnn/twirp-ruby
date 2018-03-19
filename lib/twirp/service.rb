@@ -1,68 +1,20 @@
 require "json"
 
+require_relative "error"
+require_relative "service_dsl"
+
 module Twirp
 
   class Service
 
+    extend ServiceDSL
+
     class << self
-
-      # Configure service package name.
-      def package(name)
-        @package_name = name.to_s
-      end
-
-      # Configure service name.
-      def service(name)
-        @service_name = name.to_s
-      end
-
-      # Configure service routing to handle rpc calls.
-      def rpc(rpc_method, input_class, output_class, opts)
-        raise ArgumentError.new("input_class must be a Protobuf Message class") unless input_class.is_a?(Class) 
-        raise ArgumentError.new("output_class must be a Protobuf Message class") unless output_class.is_a?(Class)
-        raise ArgumentError.new("opts[:handler_method] is mandatory") unless opts && opts[:handler_method]
-
-        @base_envs ||= {}
-        @base_envs[rpc_method.to_s] = {
-          rpc_method: rpc_method.to_sym,
-          input_class: input_class,
-          output_class: output_class,
-          handler_method: opts[:handler_method].to_sym,
-        }
-      end
-
-      # Get configured package name as String.
-      # And empty value means that there's no package.
-      def package_name
-        @package_name.to_s
-      end
-
-      # Service name as String.
-      # Defaults to the current class name.
-      def service_name
-        (@service_name || self.name).to_s
-      end
-
-      # Base Twirp environments for each rpc method.
-      def base_envs
-        @base_envs || {}
-      end
-
-      # Package and servicce name, as a unique identifier for the service,
-      # for example "example.v3.Haberdasher" (package "example.v3", service "Haberdasher").
-      # This can be used as a path prefix to route requests to the service, because a Twirp URL is:
-      # "#{BaseURL}/#{ServiceFullName}/#{Method]"
-      def service_full_name
-        package_name.empty? ? service_name : "#{package_name}.#{service_name}"
-      end
-
       # Raise exceptions instead of handling them with exception_raised hooks.
       # Useful during tests to easily debug and catch unexpected exceptions.
       # Default false.
       attr_accessor :raise_exceptions
-
-    end # class << self
-
+    end
 
     def initialize(handler)
       @handler = handler
@@ -73,19 +25,15 @@ module Twirp
       @exception_raised = []
     end
 
-    def name
-      self.class.service_name
-    end
-
-    def full_name
-      self.class.service_full_name # use to route requests to this servie
-    end
-
-    # Setup hook blocks
+    # Setup hook blocks.
     def before(&block) @before << block; end
     def on_success(&block) @on_success << block; end
     def on_error(&block) @on_error << block; end
     def exception_raised(&block) @exception_raised << block; end
+
+    # Service full_name is needed to route http requests to this service.
+    def full_name; self.class.service_full_name; end
+    def name; self.class.service_name; end
 
     # Rack app handler.
     def call(rack_env)
@@ -122,7 +70,7 @@ module Twirp
     # This is useful for unit testing the handler. The env should include
     # fake data that is used by the handler, replicating middleware and before hooks.
     def call_rpc(rpc_method, input={}, env={})
-      base_env = self.class.base_envs[rpc_method.to_s]
+      base_env = self.class.rpcs[rpc_method.to_s]
       return Twirp::Error.bad_route("Invalid rpc method #{rpc_method.to_s.inspect}") unless base_env
 
       env = env.merge(base_env)
@@ -130,7 +78,6 @@ module Twirp
       env[:input] = input
       env[:content_type] ||= "application/protobuf"
       env[:http_response_headers] = {}
-
       call_handler(env)
     end
 
@@ -158,11 +105,11 @@ module Twirp
       end
       method_name = path_parts[-1]
 
-      base_env = self.class.base_envs[method_name]
+      base_env = self.class.rpcs[method_name]
       if !base_env
         return bad_route_error("Invalid rpc method #{method_name.inspect}", rack_request)
       end
-      env.merge!(base_env) # :rpc_method, :input_class, :output_class, :handler_method
+      env.merge!(base_env) # :rpc_method, :input_class, :output_class
 
       input = nil
       begin
@@ -196,19 +143,19 @@ module Twirp
 
     # Call handler method and return a Protobuf Message or a Twirp::Error.
     def call_handler(env)
-      handler_method = env[:handler_method]
-      if !@handler.respond_to?(handler_method)
-        return Twirp::Error.unimplemented("Handler method #{handler_method} is not implemented.")
+      m = env[:ruby_method]
+      if !@handler.respond_to?(m)
+        return Twirp::Error.unimplemented("Handler method #{m} is not implemented.")
       end
 
-      out = @handler.send(handler_method, env[:input], env)
+      out = @handler.send(m, env[:input], env)
       case out
       when env[:output_class], Twirp::Error
         out
       when Hash
         env[:output_class].new(out)
       else
-        Twirp::Error.internal("Handler method #{handler_method} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{out.class.name}.")
+        Twirp::Error.internal("Handler method #{m} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{out.class.name}.")
       end
     end
 
