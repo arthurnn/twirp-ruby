@@ -4,12 +4,12 @@ module Twirp
 
     # Configure service package name.
     def package(name)
-      @package_name = name.to_s
+      @package = name
     end
 
     # Configure service name.
     def service(name)
-      @service_name = name.to_s
+      @service = name
     end
 
     # Configure service rpc methods.
@@ -18,7 +18,7 @@ module Twirp
       raise ArgumentError.new("input_class must be a Protobuf Message class") unless input_class.is_a?(Class)
       raise ArgumentError.new("output_class must be a Protobuf Message class") unless output_class.is_a?(Class)
       raise ArgumentError.new("opts[:ruby_method] is mandatory") unless opts && opts[:ruby_method]
-      
+
       rpcdef = {
         rpc_method: rpc_method.to_sym, # as defined in the Proto file.
         input_class: input_class, # google/protobuf Message class to serialize the input (proto request).
@@ -35,22 +35,21 @@ module Twirp
     # Get configured package name as String.
     # An empty value means that there's no package.
     def package_name
-      @package_name.to_s
+      @package_name ||= @package.to_s
     end
 
-    # Service name as String.
-    # Defaults to the current class name.
+    # Service name as String. Defaults to the class name.
     def service_name
-      (@service_name || self.name).to_s
+      @service_name ||= (@service || self.name.split("::").last).to_s
     end
 
     # Service name with package prefix, which should uniquelly identifiy the service,
-    # for example "example.v3.Haberdasher" (package "example.v3", service "Haberdasher").
+    # for example "example.v3.Haberdasher" for package "example.v3" and service "Haberdasher".
     # This can be used as a path prefix to route requests to the service, because a Twirp URL is:
-    # "#{BaseURL}/#{ServiceFullName}/#{Method]"
+    # "#{base_url}/#{service_full_name}/#{method]"
     def service_full_name
-      package_name.empty? ? service_name : "#{package_name}.#{service_name}"
-    end 
+      @service_full_name ||= package_name.empty? ? service_name : "#{package_name}.#{service_name}"
+    end
 
     # Get raw definitions for rpc methods.
     # This values are used as base env for handler methods.
