@@ -88,7 +88,7 @@ module Twirp
         return twirp_error_from_intermediary(status, "Response is JSON but it has no \"code\" attribute.", resp.body)
       end
       code = code.to_s.to_sym
-      if !Twirp.valid_error_code?(code)
+      if !Twirp::Error.valid_code?(code)
         return twirp_error_from_intermediary(status, "Invalid Twirp error code #{code}", resp.body)
       end
 

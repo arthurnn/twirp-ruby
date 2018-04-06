@@ -27,32 +27,60 @@ class ClientTest < Minitest::Test
     end
   end
 
-  def test_fake_request
-    conn = fake_conn "/Foo/Foo", resp: Foo.new(foo: "out")
-    c = FooClient.new(conn)
+  def test_simple_foo_client
+    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+      [200, protoheader, proto(Foo, foo: "out")]
+    })
     resp = c.call_rpc(:Foo, foo: "in")
     assert_nil resp.error
     refute_nil resp.data
     assert_equal "out", resp.data.foo
   end
 
+  def test_simple_foo_client_error
+    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+      [400, {}, json(code: "invalid_argument", msg: "dont like empty")]
+    })
+    resp = c.call_rpc(:Foo, foo: "")
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :invalid_argument, resp.error.code
+    assert_equal "dont like empty", resp.error.msg
+  end
+
+  def test_simple_foo_client_serialization_exception
+    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+      [200, protoheader, "badstuff"]
+    })
+    assert_raises Google::Protobuf::ParseError do
+      resp = c.call_rpc(:Foo, foo: "in")
+    end
+  end
+
+
+
 
   # Test Helpers
   # ------------
 
+  def protoheader
+    {'Content-Type' => 'application/protobuf'}
+  end
+
+  def proto(clss, attrs)
+    clss.encode(clss.new(attrs))
+  end
+
+  def json(attrs)
+    JSON.generate(attrs)
+  end
+
   # Helper to easily make faraday test connections with profobuf responses or errors.
-  def fake_conn(path, opts={})
-    opts[:status] ||= 200
-
-    unless opts[:resp].is_a?(String) # strings are used as literal response bodies, e.g. for JSON errors
-      opts[:resp] = opts[:resp].class.encode(opts[:resp])
-      opts[:headers] ||= {'Content-Type' => 'application/protobuf'}
-    end
-
+  def fake_conn(path)
     Faraday.new do |conn|
       conn.adapter :test do |stub|
         stub.post(path) do |env|
-          [opts[:status], opts[:headers], opts[:resp]]
+          yield(env)
         end
       end
     end

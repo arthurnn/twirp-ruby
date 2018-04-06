@@ -26,15 +26,15 @@ module Twirp
   # List of all valid error codes in Twirp
   ERROR_CODES = ERROR_CODES_TO_HTTP_STATUS.keys
 
-  def valid_error_code?(code)
-    ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
-  end
-
 
   # Twirp::Error represents an error response from a Twirp service.
   # Twirp::Error is not an Exception to be raised, but a value to be returned
   # by service handlers and received by clients.
 	class Error
+
+    def self.valid_code?(code)
+      ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
+    end
 
     # Use this constructors to ensure the errors have valid error codes. Example:
     #     Twirp::Error.internal("boom")
@@ -54,7 +54,7 @@ module Twirp
     end
 
     attr_reader :code, :msg, :meta
-    
+
     attr_accessor :cause # used when wrapping another error, but this is not serialized
 
     # Initialize a Twirp::Error
@@ -89,7 +89,7 @@ module Twirp
       if !meta.is_a? Hash
         raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
       end
-      meta.each do |key, value| 
+      meta.each do |key, value|
         if !value.is_a?(String)
           raise ArgumentError.new("Twirp::Error meta values must be Strings, but key #{key.inspect} has the value <#{value.class.to_s}> #{value.inspect}")
         end
