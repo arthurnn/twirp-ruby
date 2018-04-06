@@ -27,8 +27,8 @@ class ClientTest < Minitest::Test
     end
   end
 
-  def test_simple_foo_client
-    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+  def test_call_rpc_success
+    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [200, protoheader, proto(Foo, foo: "out")]
     })
     resp = c.call_rpc(:Foo, foo: "in")
@@ -37,8 +37,8 @@ class ClientTest < Minitest::Test
     assert_equal "out", resp.data.foo
   end
 
-  def test_simple_foo_client_error
-    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+  def test_call_rpc_error
+    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [400, {}, json(code: "invalid_argument", msg: "dont like empty")]
     })
     resp = c.call_rpc(:Foo, foo: "")
@@ -48,8 +48,8 @@ class ClientTest < Minitest::Test
     assert_equal "dont like empty", resp.error.msg
   end
 
-  def test_simple_foo_client_serialization_exception
-    c = FooClient.new(fake_conn("/Foo/Foo") {|req|
+  def test_call_rpc_serialization_exception
+    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [200, protoheader, "badstuff"]
     })
     assert_raises Google::Protobuf::ParseError do
@@ -57,7 +57,122 @@ class ClientTest < Minitest::Test
     end
   end
 
+  def test_call_rpc_invalid_method
+    c = FooClient.new("http://localhost")
+    resp = c.call_rpc(:OtherStuff, foo: "noo")
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :bad_route, resp.error.code
+  end
 
+  def test_success
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_serialized_request_body_attrs
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      size = Example::Size.decode(req.body) # body is valid protobuf
+      assert_equal 666, size.inches
+
+      [200, protoheader, proto(Example::Hat)]
+    })
+    resp = c.make_hat(inches: 666)
+    assert_nil resp.error
+    refute_nil resp.data
+  end
+
+  def test_serialized_request_body_proto
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal "application/protobuf", req.request_headers['Content-Type']
+
+      size = Example::Size.decode(req.body) # body is valid protobuf
+      assert_equal 666, size.inches
+
+      [200, protoheader, proto(Example::Hat)]
+    })
+    resp = c.make_hat(Example::Size.new(inches: 666))
+    assert_nil resp.error
+    refute_nil resp.data
+  end
+
+  def test_twirp_error
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [500, {}, json(code: "internal", msg: "something went wrong")]
+    })
+    resp = c.make_hat(inches: 1)
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal "something went wrong", resp.error.msg
+  end
+
+  def test_intermediary_plain_error
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [503, {}, 'plain text error from proxy']
+    })
+    resp = c.make_hat(inches: 1)
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :unavailable, resp.error.code # 503 maps to :unavailable
+    assert_equal "unavailable", resp.error.msg
+    assert_equal "true", resp.error.meta[:http_error_from_intermediary]
+    assert_equal "Response is not JSON", resp.error.meta[:not_a_twirp_error_because]
+    assert_equal "plain text error from proxy", resp.error.meta[:body]
+  end
+
+  def test_redirect_error
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [300, {'location' => "http://rainbow.com"}, '']
+    })
+    resp = c.make_hat(inches: 1)
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal "Unexpected HTTP Redirect from location=http://rainbow.com", resp.error.msg
+    assert_equal "true", resp.error.meta[:http_error_from_intermediary]
+    assert_equal "Redirects not allowed on Twirp requests", resp.error.meta[:not_a_twirp_error_because]
+  end
+
+  def test_missing_proto_response_header
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [200, {}, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({})
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal 'Expected response Content-Type "application/protobuf" but found nil', resp.error.msg
+  end
+
+  def test_error_with_invalid_code
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [500, {}, json(code: "unicorn", msg: "the unicorn is here")]
+    })
+    resp = c.make_hat({})
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal "Invalid Twirp error code: unicorn", resp.error.msg
+  end
+
+  def test_error_with_no_code
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [500, {}, json(msg: "I have no code of honor")]
+    })
+    resp = c.make_hat({})
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :unknown, resp.error.code # 500 maps to :unknown
+    assert_equal "unknown", resp.error.msg
+    assert_equal "true", resp.error.meta[:http_error_from_intermediary]
+    assert_equal 'Response is JSON but it has no "code" attribute', resp.error.meta[:not_a_twirp_error_because]
+    assert_equal '{"msg":"I have no code of honor"}', resp.error.meta[:body]
+  end
 
 
   # Test Helpers
@@ -67,7 +182,7 @@ class ClientTest < Minitest::Test
     {'Content-Type' => 'application/protobuf'}
   end
 
-  def proto(clss, attrs)
+  def proto(clss, attrs={})
     clss.encode(clss.new(attrs))
   end
 
@@ -75,8 +190,7 @@ class ClientTest < Minitest::Test
     JSON.generate(attrs)
   end
 
-  # Helper to easily make faraday test connections with profobuf responses or errors.
-  def fake_conn(path)
+  def conn_stub(path)
     Faraday.new do |conn|
       conn.adapter :test do |stub|
         stub.post(path) do |env|

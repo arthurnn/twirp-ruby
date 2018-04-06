@@ -62,7 +62,7 @@ module Twirp
       end
 
       if resp.headers['Content-Type'] != 'application/protobuf'
-        return ClientResp.new(nil, Twirp::Error.internal("Unexpected response Content-Type #{resp.headers['Content-Type'].inspect}. Expected 'application/protobuf'."))
+        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type \"application/protobuf\" but found #{resp.headers['Content-Type'].inspect}"))
       end
 
       data = rpcdef[:output_class].decode(resp.body)
@@ -85,11 +85,11 @@ module Twirp
 
       code = err_attrs["code"]
       if code.to_s.empty?
-        return twirp_error_from_intermediary(status, "Response is JSON but it has no \"code\" attribute.", resp.body)
+        return twirp_error_from_intermediary(status, "Response is JSON but it has no \"code\" attribute", resp.body)
       end
       code = code.to_s.to_sym
       if !Twirp::Error.valid_code?(code)
-        return twirp_error_from_intermediary(status, "Invalid Twirp error code #{code}", resp.body)
+        return Twirp::Error.internal("Invalid Twirp error code: #{code}", invalid_code: code.to_s, body: resp.body)
       end
 
       Twirp::Error.new(code, err_attrs["msg"], err_attrs["meta"])
