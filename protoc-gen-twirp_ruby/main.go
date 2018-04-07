@@ -92,6 +92,10 @@ func (g *generator) generateFile(file *descriptor.FileDescriptorProto) *plugin.C
 				indent, methName, inputName, outputName, SnakeCase(methName)))
 		}
 		g.P(fmt.Sprintf(`%send`, indent))
+		g.P(``)
+		g.P(fmt.Sprintf("%sclass %sClient < Twirp::Client", indent, CamelCase(serviceName)))
+		g.P(fmt.Sprintf(`%s  client_for %sService`, indent, CamelCase(serviceName)))
+		g.P(fmt.Sprintf(`%send`, indent))
 		if i < len(file.Service)-1 {
 			g.P(``)
 		}
