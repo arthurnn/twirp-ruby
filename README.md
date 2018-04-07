@@ -168,13 +168,14 @@ resp = c.my_method(ReqClass.new())
 
 A Twirp client takes care of routing, serialization and error handling.
 
-Advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday). For example:
+Other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
 
 ```ruby
-c = MyClient.new(Faraday.new(:url => 'http://localhost:3000') do |f|
-  f.basic_auth('username', 'password')
-  f.response :logger # log to STDOUT
-  f.adapter Faraday.default_adapter  # make requests with Net::HTTP
+c = MyClient.new(Faraday.new(:url => 'http://localhost:3000') do |c|
+  c.use Faraday::Request::Retry # configure retries
+  c.use Faraday::Request::BasicAuthentication, 'login', 'pass'
+  c.use Faraday::Response::Logger # log to STDOUT
+  c.use Faraday::Adapter::NetHttp # multiple adapters for different HTTP libraries
 end)
 ```
 
