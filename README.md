@@ -1,14 +1,21 @@
 # Twirp
 
 Ruby implementation for for [Twirp](https://github.com/twitchtv/twirp). It includes:
- 
- * [twirp gem](https://rubygems.org/gems/twirp): with library code like `Twirp::Error` and `Twirp::Service`.
- * `protoc-gen-twirp_ruby` protoc plugin to generate Ruby services and clients from a Protobuf file. 
+
+  * [twirp gem](https://rubygems.org/gems/twirp) with classes for:
+    * Twirp::Error
+    * Twirp::Service
+    * Twirp::Client
+  * `protoc-gen-twirp_ruby` protoc plugin for code generation from Protobuf files (optional).
 
 
 ## Installation
 
-Install the gem with `gem install twirp` or in Bundler `gem "twirp"`.
+Add `gem "twirp"` to your Gemfile, or install with:
+
+```sh
+➜ gem install twirp
+```
 
 For code generation, Make sure that you have the [protobuf compiler](https://github.com/golang/protobuf) (install version 3+).
 And then use `go get` to install the ruby_twirp protoc plugin:
@@ -18,9 +25,13 @@ And then use `go get` to install the ruby_twirp protoc plugin:
 ```
 
 
-## Usage Example
+## Usage
 
-Let's make a `HelloWorld` service in Twirp. Start with a [Protobuf](https://developers.google.com/protocol-buffers/docs/proto3) file:
+Let's make a `HelloWorld` service in Twirp.
+
+### Code Generation
+
+Starting with a [Protobuf](https://developers.google.com/protocol-buffers/docs/proto3) file:
 
 ```protobuf
 // hello_world.proto
@@ -41,23 +52,34 @@ message HelloResponse {
 }
 ```
 
-Congrats! You already have everything you need to make clients, message routing, serialization and also reasonable documentation for your service.
-
-
-### Generate code
-
-Run the `protoc` binary with the twirp_ruby plugin to auto-generate code:
+Run the `protoc` binary with the `twirp_ruby` plugin to auto-generate code:
 
 ```sh
 ➜ protoc --proto_path=. ./hello_world.proto --ruby_out=gen --twirp_ruby_out=gen
 ```
 
-This will generate `gen/helloworld_pb.rb` and `gen/helloworld_twirp.rb` files with proto messages, service and client code.
+It will generate `gen/helloworld_pb.rb` and `gen/helloworld_twirp.rb` files with messages, service and client code. The generated code looks something like this:
+
+```ruby
+module Example
+  class HelloWorld < Twirp::Service
+    package "example"
+    service "HelloWorld"
+    rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
+  end
+
+  class HelloWorldClient < Twirp::Client
+    client_for HelloWorld
+  end
+end
+```
+
+If you don't have Proto files, or don't like the code-generation step, you can always define your service and/or client directly using the DSL.
 
 
 #### Implement the Service Handler
 
-Your Service Handler is a simple class that implements each method defined in the proto file.
+The Service Handler is a simple class that has one method to handle each rpc call.
 For each method, the `intput` is an instance of the protobuf request message. The Twirp `env`
 contains metadata related to the request, and other fields that could have been set from before
 hooks (e.g. `env[:user_id]` from authentication).
@@ -72,7 +94,7 @@ end
 
 ### Mount the service to receive HTTP requests
 
-The service is a Rack app:
+The service is a Rack app instantiated with your handler impementation.
 
 ```ruby
 require 'rack'
@@ -83,15 +105,9 @@ service = Example::HelloWorld.new(handler) # twirp-generated
 Rack::Handler::WEBrick.run service
 ```
 
-You can also mount onto a Rails route:
+Since it is a Rack app, it can easily be mounted onto a Rails route with `mount service, at: service.full_name`.
 
-```ruby
-App::Application.routes.draw do
-  mount service, at: service.full_name
-end
-```
-
-Start the server and `curl` with JSON to test if everything works:
+Now you can start the server and `curl` with JSON to test if everything works:
 
 ```sh
 ➜ curl --request POST \
@@ -100,7 +116,7 @@ Start the server and `curl` with JSON to test if everything works:
   --data '{"name": "World"}'
 ```
 
-### Unit Test the Service Handler
+### Unit testing the Service Handler
 
 Twirp already takes care of HTTP routing and serialization, you don't really need to build fake HTTP requests in your tests.
 Instead, you should focus on testing your Service Handler. For convenience, the Twirp Service has the method
@@ -108,8 +124,8 @@ Instead, you should focus on testing your Service Handler. For convenience, the 
 
 ```ruby
 require 'minitest/autorun'
-class HelloWorldHandlerTest < Minitest::Test
 
+class HelloWorldHandlerTest < Minitest::Test
   def test_hello_responds_with_name
     service = Example::HelloWorld.new(HelloWorldHandler.new())
     out = service.call_rpc :Hello, name: "World"
@@ -119,12 +135,55 @@ end
 ```
 
 
-## Service Hooks
+## Clients
+
+Generated clients implement the methods defined in the proto file. The response object contains `data` with an instance of the response class if successfull,
+or an `error` with an instance of `Twirp::Error` if there was a problem. For example, with the HelloWorld generated client:
+
+```ruby
+c = Example::HelloWorldClient.new("http://localhost:3000")
+resp = c.hello(name: "World")
+if resp.error
+  puts resp.error #=> <Twirp::Error code:... msg:"..." meta:{...}>
+else
+  puts resp.data #=> <Example::HelloResponse: message:"Hello World">
+end
+```
+
+You can also use the DSL to define your own client if you don't have easy access to the proto file or generated code:
+
+```ruby
+class MyClient < Twirp::Client
+  package "example"
+  service "MyService"
+  rpc :MyMethod, ReqClass, RespClass, :ruby_method => :my_method
+end
+
+c = MyClient.new("http://localhost:3000")
+resp = c.my_method(ReqClass.new())
+```
+
+
+### Configure client with Faraday
+
+A Twirp client takes care of routing, serialization and error handling.
+
+Advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday). For example:
+
+```ruby
+c = MyClient.new(Faraday.new(:url => 'http://localhost:3000') do |f|
+  f.basic_auth('username', 'password')
+  f.response :logger # log to STDOUT
+  f.adapter Faraday.default_adapter  # make requests with Net::HTTP
+end)
+```
+
+## Server Hooks
 
 In the lifecycle of a request, the Twirp service starts by routing the request to a valid
-RPC method. If routing fails, the `on_error` hook is called with a bad_route error. 
-If routing succeeds, the `before` hook is called before calling the RPC method handler, 
-and then either `on_success` or `on_error` depending if the response is a Twirp error or not. 
+RPC method. If routing fails, the `on_error` hook is called with a bad_route error.
+If routing succeeds, the `before` hook is called before calling the RPC method handler,
+and then either `on_success` or `on_error` depending if the response is a Twirp error or not.
 
 ```
 routing -> before -> handler -> on_success
@@ -181,7 +240,3 @@ svc.exception_raised do |e, env|
 end
 ```
 
-
-## Clients
-
-TODO: clients and client code-generation are pending ...
