@@ -30,7 +30,7 @@ module Twirp
   # Twirp::Error represents an error response from a Twirp service.
   # Twirp::Error is not an Exception to be raised, but a value to be returned
   # by service handlers and received by clients.
-	class Error
+  class Error
 
     def self.valid_code?(code)
       ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
@@ -77,7 +77,11 @@ module Twirp
     end
 
     def to_s
-      "<Twirp::Error code:#{code.inspect} msg:#{msg.inspect} meta:#{meta.inspect}>"
+      "<Twirp::Error code:#{code} msg:#{msg.inspect} meta:#{meta.inspect}>"
+    end
+
+    def inspect
+      to_s
     end
 
 
