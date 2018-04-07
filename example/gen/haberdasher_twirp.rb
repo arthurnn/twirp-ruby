@@ -5,6 +5,8 @@ module Example
   class HaberdasherService < Twirp::Service
     package "example"
     service "Haberdasher"
-    rpc :HelloWorld, HelloWorldRequest, HelloWorldResponse, :handler_method => :hello_world
+    rpc :HelloWorld, HelloWorldRequest, HelloWorldResponse, :ruby_method => :hello_world
   end
+
+  HaberdasherClient = HaberdasherService.client_class
 end

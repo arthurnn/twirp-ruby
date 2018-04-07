@@ -29,7 +29,11 @@ module Example
   class Haberdasher < Twirp::Service
     package "example"
     service "Haberdasher"
-    rpc :MakeHat, Size, Hat, :handler_method => :make_hat
+    rpc :MakeHat, Size, Hat, :ruby_method => :make_hat
+  end
+
+  class HaberdasherClient < Twirp::Client
+    client_for Haberdasher
   end
 end
 
@@ -47,4 +51,20 @@ end
 
 # Twirp Service with no package and no rpc methods.
 class EmptyService < Twirp::Service
+end
+class EmptyClient < Twirp::Client
+end
+
+# Foo message
+Google::Protobuf::DescriptorPool.generated_pool.build do
+  add_message "Foo" do
+    optional :foo, :string, 1
+  end
+end
+Foo = Google::Protobuf::DescriptorPool.generated_pool.lookup("Foo").msgclass
+
+# Foo Client
+class FooClient < Twirp::Client
+  service "Foo"
+  rpc :Foo, Foo, Foo, :ruby_method => :foo
 end

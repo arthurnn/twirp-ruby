@@ -13,14 +13,14 @@ class ServiceTest < Minitest::Test
   end
 
   # The rpc DSL should properly build the base Twirp environment for each rpc method.
-  def test_base_envs_accessor
-    assert_equal 1, Example::Haberdasher.base_envs.size
+  def test_rpcs_accessor
+    assert_equal 1, Example::Haberdasher.rpcs.size
     assert_equal({
       rpc_method: :MakeHat,
       input_class: Example::Size,
       output_class: Example::Hat,
-      handler_method: :make_hat,
-    }, Example::Haberdasher.base_envs["MakeHat"])
+      ruby_method: :make_hat,
+    }, Example::Haberdasher.rpcs["MakeHat"])
   end
 
   # DSL package and service define the proper data on the service
@@ -33,7 +33,7 @@ class ServiceTest < Minitest::Test
     assert_equal "EmptyService", EmptyService.service_name # defaults to class name
     assert_equal "EmptyService", EmptyService.service_full_name # with no package is just the service name
   end
-  
+
   def test_init_service
     svc = Example::Haberdasher.new(HaberdasherHandler.new)
     assert svc.respond_to?(:call) # so it is a Proc that can be used as Rack middleware
@@ -71,35 +71,35 @@ class ServiceTest < Minitest::Test
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'Invalid rpc method "MakeUnicorns"',
       "meta" => {"twirp_invalid_route" => "POST /twirp/example.Haberdasher/MakeUnicorns"},
-    }, JSON.parse(body[0]))    
+    }, JSON.parse(body[0]))
   end
 
   def test_bad_route_with_wrong_http_method
-    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat", 
+    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat",
       method: "GET", input: '{"inches": 10}', "CONTENT_TYPE" => "application/json"
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'HTTP request method must be POST',
       "meta" => {"twirp_invalid_route" => "GET /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
   def test_bad_route_with_wrong_content_type
-    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat", 
+    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat",
       method: "POST", input: 'free text', "CONTENT_TYPE" => "text/plain"
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'unexpected Content-Type: "text/plain". Content-Type header must be one of application/json or application/protobuf',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
@@ -112,7 +112,7 @@ class ServiceTest < Minitest::Test
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'Invalid route. Expected format: POST {BaseURL}/example.Haberdasher/{Method}',
       "meta" => {"twirp_invalid_route" => "POST /wrongpath"},
     }, JSON.parse(body[0]))
@@ -125,35 +125,35 @@ class ServiceTest < Minitest::Test
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'Invalid route. Expected format: POST {BaseURL}/example.Haberdasher/{Method}',
       "meta" => {"twirp_invalid_route" => "POST /another/wrong.Path/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
   def test_bad_route_with_wrong_json_body
-    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat", 
+    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat",
       method: "POST", input: 'bad json', "CONTENT_TYPE" => "application/json"
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
 
   def test_bad_route_with_wrong_protobuf_body
-    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat", 
+    rack_env = Rack::MockRequest.env_for "example.Haberdasher/MakeHat",
       method: "POST", input: 'bad protobuf', "CONTENT_TYPE" => "application/protobuf"
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route', 
+      "code" => 'bad_route',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
@@ -230,7 +230,7 @@ class ServiceTest < Minitest::Test
     assert_equal 400, status
     assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
-      "code" => 'invalid_argument', 
+      "code" => 'invalid_argument',
       "msg" => "I don't like that size",
     }, JSON.parse(body[0]))
   end
@@ -243,7 +243,7 @@ class ServiceTest < Minitest::Test
 
     rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new
     status, headers, body = svc.call(rack_env)
-    
+
     assert_equal 200, status
     assert_equal "public, max-age=60", headers["Cache-Control"] # set by the handler
     assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp::Service
@@ -397,7 +397,7 @@ class ServiceTest < Minitest::Test
     assert_equal 500, status
     refute handler_called
     assert_equal({
-      "code" => 'intenal', 
+      "code" => 'intenal',
       "msg"  => 'error from before hook',
     }, JSON.parse(body[0]))
   end
@@ -474,7 +474,7 @@ class ServiceTest < Minitest::Test
     assert_equal 500, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'intenal', 
+      "code" => 'intenal',
       "msg"  => 'hook1 failed',
     }, JSON.parse(body[0]))
 
@@ -517,7 +517,7 @@ class ServiceTest < Minitest::Test
     assert_equal 500, status
     refute success_called # after hook not called
     assert_equal({
-      "code" => 'intenal', 
+      "code" => 'intenal',
       "msg"  => 'error from handler',
     }, JSON.parse(body[0]))
   end
@@ -591,7 +591,7 @@ class ServiceTest < Minitest::Test
 
     assert_equal 500, status
     assert_equal({
-      "code" => 'intenal', 
+      "code" => 'intenal',
       "msg"  => 'before failed',
     }, JSON.parse(body[0]))
     assert error_called
@@ -634,7 +634,7 @@ class ServiceTest < Minitest::Test
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
       return Twirp::Error.internal "handler error"
     end)
-    
+
     error_called = false
     svc.on_error do |twerr, env|
       error_called = true
@@ -647,7 +647,7 @@ class ServiceTest < Minitest::Test
 
     assert_equal 500, status
     assert_equal({
-      "code" => 'intenal', 
+      "code" => 'intenal',
       "msg"  => 'handler error',
     }, JSON.parse(body[0]))
     assert error_called
@@ -771,18 +771,17 @@ class ServiceTest < Minitest::Test
 
 
 
-
   # Test Helpers
   # ------------
 
   def json_req(path, attrs)
-    Rack::MockRequest.env_for path, method: "POST", 
+    Rack::MockRequest.env_for path, method: "POST",
       input: JSON.generate(attrs),
       "CONTENT_TYPE" => "application/json"
   end
 
   def proto_req(path, proto_message)
-    Rack::MockRequest.env_for path, method: "POST", 
+    Rack::MockRequest.env_for path, method: "POST",
       input: proto_message.class.encode(proto_message),
       "CONTENT_TYPE" => "application/protobuf"
   end
