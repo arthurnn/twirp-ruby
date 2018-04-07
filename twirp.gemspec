@@ -10,13 +10,12 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Cyrus A. Forbes", "Mario Izquierdo"]
   spec.email         = ["forbescyrus@gmail.com", "tothemario@gmail.com"]
   spec.summary       = %q{Twirp services in Ruby.}
-  spec.description   = %q{Twirp is a simple RPC framework with protobuf service definitions. The Twirp gem provides support for Ruby.}
+  spec.description   = %q{Twirp is a simple RPC framework with protobuf service definitions. The Twirp gem provides native support for Ruby.}
   spec.homepage      = "https://github.com/cyrusaf/ruby-twirp"
   spec.license       = "MIT"
 
-  spec.files         = `git ls-files -z`.split("\x0")
-  spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
-  spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
+  spec.files         = Dir['lib/**/*'] + %w(Gemfile LICENSE README.md twirp.gemspec)
+  spec.test_files    = Dir['test/**/*']
   spec.require_paths = ["lib"]
 
   spec.add_runtime_dependency 'google-protobuf', '>= 3.0.0'
