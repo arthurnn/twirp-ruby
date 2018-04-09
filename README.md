@@ -55,7 +55,7 @@ protoc --proto_path=. --ruby_out=. --twirp_ruby_out=. ./example/hello_world/serv
 
 ## Twirp Service Handler
 
-A handler is a simple class that implements each rpc method. For example a handler for `HelloWorld`:
+A handler implements the rpc methods. For example a handler for `HelloWorldService`:
 
 ```ruby
 class HelloWorldHandler
@@ -71,14 +71,16 @@ class HelloWorldHandler
 end
 ```
 
-The `req` argument is the request message (input), and the returned value is expected to be the response message, or a `Twirp::Error`.
+For each rpc method:
 
-The `env` argument contains metadata related to the request (e.g. `env[:output_class]`), and other fields that could have been set from before-hooks (e.g. `env[:user_id]` from authentication).
+ * The `req` argument is the input request message, already serialized.
+ * The `env` argument is the Twirp environment with data related to the request (e.g. `env[:output_class]`), and other fields that could have been set from before-hooks (e.g. `env[:user_id]` from authentication).
+ * The returned value is expected to be the response message (or its attributes), or a `Twirp::Error`.
 
 
-### Start the Service
+#### Start the Service
 
-The service is a [Rack app](https://rack.github.io/) instantiated with your handler impementation. For example:
+Instantiate the service with your handler impementation. The service is a [Rack app](https://rack.github.io/). For example:
 
 ```ruby
 handler = HelloWorldHandler.new()
@@ -90,7 +92,7 @@ Rack::Handler::WEBrick.run service
 
 Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other HTTP frameworks.
 
-### Unit Tests
+#### Unit Tests
 
 Twirp already takes care of HTTP routing and serialization, you don't really need to test that part, insteadof that, focus on testing the handler using the method `.call_rpc(rpc_method, attrs={}, env={})` on the service:
 
