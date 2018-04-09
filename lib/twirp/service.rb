@@ -42,12 +42,12 @@ module Twirp
         env = {}
         bad_route = route_request(rack_env, env)
         return error_response(bad_route, env) if bad_route
-      
+
         @before.each do |hook|
           result = hook.call(rack_env, env)
           return error_response(result, env) if result.is_a? Twirp::Error
         end
-          
+
         output = call_handler(env)
         return error_response(output, env) if output.is_a? Twirp::Error
         return success_response(output, env)
@@ -59,7 +59,7 @@ module Twirp
         rescue => hook_e
           e = hook_e
         end
-        
+
         twerr = Twirp::Error.internal_with(e)
         return error_response(twerr, env)
       end
@@ -99,7 +99,7 @@ module Twirp
         return bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of application/json or application/protobuf", rack_request)
       end
       env[:content_type] = content_type
-      
+
       path_parts = rack_request.fullpath.split("/")
       if path_parts.size < 3 || path_parts[-2] != self.full_name
         return bad_route_error("Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
@@ -115,7 +115,7 @@ module Twirp
       input = nil
       begin
         input = decode_input(rack_request.body.read, env[:input_class], content_type)
-      rescue => e
+      rescue
         return bad_route_error("Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}", rack_request)
       end
 

@@ -79,7 +79,7 @@ module Twirp
       err_attrs = nil
       begin
         err_attrs = JSON.parse(resp.body)
-      rescue JSON::ParserError => e
+      rescue JSON::ParserError
         return twirp_error_from_intermediary(status, "Response is not JSON", resp.body)
       end
 
@@ -109,7 +109,7 @@ module Twirp
         else :unknown
       end
 
-      twerr = Twirp::Error.new(code, code.to_s, {
+      Twirp::Error.new(code, code.to_s, {
         http_error_from_intermediary: "true",
         not_a_twirp_error_because: reason,
         status_code: status.to_s,

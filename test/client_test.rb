@@ -53,7 +53,7 @@ class ClientTest < Minitest::Test
       [200, protoheader, "badstuff"]
     })
     assert_raises Google::Protobuf::ParseError do
-      resp = c.call_rpc(:Foo, foo: "in")
+      c.call_rpc(:Foo, foo: "in")
     end
   end
 

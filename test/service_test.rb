@@ -178,7 +178,7 @@ class ServiceTest < Minitest::Test
     end
 
     rack_env = json_req "/example.Haberdasher/BadRouteMethod", inches: 10
-    status, headers, body = svc.call(rack_env)
+    status, _, body = svc.call(rack_env)
 
     assert_equal 404, status
     refute before_called
@@ -188,7 +188,7 @@ class ServiceTest < Minitest::Test
 
   def test_long_base_url
     rack_env = json_req "long-ass/base/url/twirp/example.Haberdasher/MakeHat", {inches: 10}
-    status, headers, body = haberdasher_service.call(rack_env)
+    status, _, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
   end
@@ -200,7 +200,7 @@ class ServiceTest < Minitest::Test
     end)
 
     rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new
-    status, headers, body = svc.call(rack_env)
+    status, _, body = svc.call(rack_env)
 
     assert_equal 200, status
     assert_equal Example::Hat.new(inches: 11, color: ""), Example::Hat.decode(body[0])
