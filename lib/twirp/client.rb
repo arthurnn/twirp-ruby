@@ -1,8 +1,9 @@
 require 'faraday'
 require 'json'
 
-require_relative "error"
-require_relative "service_dsl"
+require_relative 'encoding'
+require_relative 'error'
+require_relative 'service_dsl'
 
 module Twirp
 
@@ -23,37 +24,49 @@ module Twirp
     # Hook for ServiceDSL#rpc to define a new method client.<ruby_method>(input, opts).
     def self.rpc_define_method(rpcdef)
       define_method rpcdef[:ruby_method] do |input|
-        call_rpc(rpcdef[:rpc_method], input)
+        rpc(rpcdef[:rpc_method], input)
       end
     end
 
-    # Init with a Faraday connection.
-    def initialize(conn)
+    # Init with a Faraday connection, or a base_url that is used in a default connection.
+    # Clients use Content-Type="application/protobuf" by default. For JSON clinets use :content_type => "application/json".
+    def initialize(conn, opts={})
       @conn = case conn
-      when String then Faraday.new(url: conn) # init with hostname
-      when Faraday::Connection then conn # inith with connection
-      else raise ArgumentError.new("Expected hostname String or Faraday::Connection")
+        when String then Faraday.new(url: conn) # init with hostname
+        when Faraday::Connection then conn      # init with connection
+        else raise ArgumentError.new("Invalid conn #{conn.inspect}. Expected String hostname or Faraday::Connection")
+      end
+
+      @content_type = (opts[:content_type] || Encoding::PROTO)
+      if !Encoding.valid_content_type?(@content_type)
+        raise ArgumentError.new("Invalid content_type #{@content_type.inspect}. Expected one of #{Encoding.valid_content_types.inspect}")
       end
     end
 
-    def service_full_name; self.class.service_full_name; end
+    def service_full_name
+      self.class.service_full_name
+    end
 
     def rpc_path(rpc_method)
       "/#{service_full_name}/#{rpc_method}"
     end
 
-    def call_rpc(rpc_method, input)
+    # Make a remote procedure call to a defined rpc_method. The input can be a Proto message instance,
+    # or the attributes (Hash) to instantiate it. Returns a ClientResp instance with an instance of
+    # output_class, or a Twirp::Error. The input and output classes are the ones configued with the rpc DSL.
+    # If rpc_method was not defined with the rpc DSL then a response with a bad_route error is returned instead.
+    def rpc(rpc_method, input)
       rpcdef = self.class.rpcs[rpc_method.to_s]
       if !rpcdef
         return ClientResp.new(nil, Twirp::Error.bad_route("rpc not defined on this client"))
       end
 
       input = rpcdef[:input_class].new(input) if input.is_a? Hash
-      body = rpcdef[:input_class].encode(input)
+      body = Encoding.encode(input, rpcdef[:input_class], @content_type)
 
       resp = @conn.post do |r|
         r.url rpc_path(rpc_method)
-        r.headers['Content-Type'] = 'application/protobuf'
+        r.headers['Content-Type'] = @content_type
         r.body = body
       end
 
@@ -61,11 +74,11 @@ module Twirp
         return ClientResp.new(nil, error_from_response(resp))
       end
 
-      if resp.headers['Content-Type'] != 'application/protobuf'
-        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type \"application/protobuf\" but found #{resp.headers['Content-Type'].inspect}"))
+      if resp.headers['Content-Type'] != @content_type
+        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type #{@content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
       end
 
-      data = rpcdef[:output_class].decode(resp.body)
+      data = Encoding.decode(resp.body, rpcdef[:output_class], @content_type)
       return ClientResp.new(data, nil)
     end
 

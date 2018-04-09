@@ -100,7 +100,7 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route',
-      "msg"  => 'unexpected Content-Type: "text/plain". Content-Type header must be one of application/json or application/protobuf',
+      "msg"  => 'Unexpected Content-Type: "text/plain". Content-Type header must be one of ["application/json", "application/protobuf"]',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end

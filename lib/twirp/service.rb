@@ -1,7 +1,8 @@
-require "json"
+require 'json'
 
-require_relative "error"
-require_relative "service_dsl"
+require_relative 'encoding'
+require_relative 'error'
+require_relative 'service_dsl'
 
 module Twirp
 
@@ -77,7 +78,7 @@ module Twirp
       env = env.merge(base_env)
       input = env[:input_class].new(input) if input.is_a? Hash
       env[:input] = input
-      env[:content_type] ||= "application/protobuf"
+      env[:content_type] ||= Encoding::PROTO
       env[:http_response_headers] = {}
       call_handler(env)
     end
@@ -95,8 +96,8 @@ module Twirp
       end
 
       content_type = rack_request.get_header("CONTENT_TYPE")
-      if content_type != "application/json" && content_type != "application/protobuf"
-        return bad_route_error("unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of application/json or application/protobuf", rack_request)
+      if !Encoding.valid_content_type?(content_type)
+        return bad_route_error("Unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of #{Encoding.valid_content_types.inspect}", rack_request)
       end
       env[:content_type] = content_type
 
@@ -114,7 +115,7 @@ module Twirp
 
       input = nil
       begin
-        input = decode_input(rack_request.body.read, env[:input_class], content_type)
+        input = Encoding.decode(rack_request.body.read, env[:input_class], content_type)
       rescue
         return bad_route_error("Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}", rack_request)
       end
@@ -128,19 +129,7 @@ module Twirp
       Twirp::Error.bad_route msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
     end
 
-    def decode_input(bytes, input_class, content_type)
-      case content_type
-      when "application/protobuf" then input_class.decode(bytes)
-      when "application/json"     then input_class.decode_json(bytes)
-      end
-    end
 
-    def encode_output(obj, output_class, content_type)
-      case content_type
-      when "application/protobuf" then output_class.encode(obj)
-      when "application/json"     then output_class.encode_json(obj)
-      end
-    end
 
     # Call handler method and return a Protobuf Message or a Twirp::Error.
     def call_handler(env)
@@ -166,7 +155,7 @@ module Twirp
         @on_success.each{|hook| hook.call(env) }
 
         headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
-        resp_body = encode_output(output, env[:output_class], env[:content_type])
+        resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
         [200, headers, [resp_body]]
 
       rescue => e
@@ -201,7 +190,8 @@ module Twirp
     end
 
     def error_response_headers
-      {'Content-Type' => 'application/json'}
+      # Twirp errors are always JSON, even if the request was protobuf
+      {'Content-Type' => Encoding::JSON}
     end
 
   end
