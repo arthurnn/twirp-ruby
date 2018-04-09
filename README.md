@@ -122,16 +122,29 @@ Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.
 
 ## Twirp Clients
 
-Generated clients implement the methods defined in the proto file. The response object contains `data` with an instance of the response class if successfull, or an `error` with an instance of `Twirp::Error` if there was a problem. For example, with the HelloWorld generated client:
+Instantiate the client with the base_url:
 
 ```ruby
 c = Example::HelloWorldClient.new("http://localhost:3000")
+```
+
+Generated clients implement the methods defined in the proto file:
+
+```ruby
 resp = c.hello(name: "World")
 if resp.error
   puts resp.error #=> <Twirp::Error code:... msg:"..." meta:{...}>
 else
   puts resp.data #=> <Example::HelloResponse: message:"Hello World">
 end
+```
+
+### Protobuf or JSON
+
+Clients use Protobuf by default. To make a client that uses JSON encoding, set the content_type option:
+
+```ruby
+c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "application/json")
 ```
 
 ### Configure Clients with Faraday
@@ -141,12 +154,14 @@ A Twirp client takes care of routing, serialization and error handling.
 Other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
 
 ```ruby
-c = MyClient.new(Faraday.new(:url => 'http://localhost:3000') do |c|
+conn = Faraday.new(:url => 'http://localhost:3000') do |c|
   c.use Faraday::Request::Retry # configure retries
   c.use Faraday::Request::BasicAuthentication, 'login', 'pass'
   c.use Faraday::Response::Logger # log to STDOUT
   c.use Faraday::Adapter::NetHttp # multiple adapters for different HTTP libraries
-end)
+end
+
+c = Example::HelloWorldClient.new(conn)
 ```
 
 ## Server Hooks
