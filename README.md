@@ -2,17 +2,17 @@
 
 Twirp allows to easily define RPC services and clients that communicate using Protobuf or JSON over HTTP.
 
-This is the Ruby implementation, but Twirp is available in many other languages. The cannonical implementation is in Go: https://github.com/twitchtv/twirp
+The [Twirp protocol](https://twitchtv.github.io/twirp/docs/spec_v5.html) is implemented in multiple languages. This means that you can write your service in one language and automatically generate clients in other languages. Refer to the [Golang implementation](https://github.com/twitchtv/twirp) for more details on the project.
 
 ## Install
 
 Add `gem "twirp"` to your Gemfile, or install with `gem install twirp`.
 
+For code generation, you also need [protoc](https://github.com/golang/protobuf) (version 3+).
+
 ## Service DSL
 
-Protobuf messages are defined with [google-protobuf](https://github.com/google/protobuf/tree/master/ruby), which has its own DSL to define message classes that can serialize into both Protobuf and JSON.
-
-A Twirp service adds the RPC methods to send and receive those messages. For example:
+A Twirp service defines RPC methods to send and receive Protobuf messages. For example, a `HelloWorld` service:
 
 ```ruby
 require 'twirp'
@@ -29,6 +29,8 @@ module Example
   end
 end
 ```
+
+The `HelloRequest` and `HelloResponse` messages are expected to be [google-protobuf](https://github.com/google/protobuf/tree/master/ruby) messages, which can also be defined from their DSL or auto-generated.
 
 
 ## Code Generation
@@ -53,33 +55,29 @@ protoc --proto_path=. --ruby_out=. --twirp_ruby_out=. ./example/hello_world/serv
 
 ## Twirp Service
 
-A Twirp service is instantiated with a service handler to implement each rpc method.
-
-An example handler for HelloWorld service would look like this:
+A Twirp service delegates into a service handler to implement each rpc method. For example a handler for `HelloWorld`:
 
 ```ruby
 class HelloWorldHandler
 
-  def hello(input, env)
-    if input.name.empty?
+  def hello(req, env)
+    if req.name.empty?
       Twirp::Error.invalid_argument("name is mandatory")
     else
-      {message: "Hello #{input.name}"}
+      {message: "Hello #{req.name}"}
     end
   end
 
 end
 ```
 
-The `intput` argument is the request message, and the returned value is expected to be the response message, or a `Twirp::Error`.
+The `req` argument is the request message (input), and the returned value is expected to be the response message, or a `Twirp::Error`.
 
-The `env` argument contains metadata related to the request, and other fields that could have been set from before
-hooks (e.g. `env[:user_id]` from authentication).
+The `env` argument contains metadata related to the request (e.g. `env[:output_class]`), and other fields that could have been set from before-hooks (e.g. `env[:user_id]` from authentication).
 
 ### Unit Tests
 
-Twirp already takes care of HTTP routing and serialization, you don't really need to fake HTTP requests in your tests. The Twirp service has the method
-`.call_rpc(rpc_method, attrs={}, env={})` to call the handler with a fake Twirp env and making sure that the handler output is valid.
+Twirp already takes care of HTTP routing and serialization, you don't really need to test that part, insteadof that, focus on testing the handler using the method `.call_rpc(rpc_method, attrs={}, env={})` on the service:
 
 ```ruby
 require 'minitest/autorun'
@@ -87,8 +85,8 @@ require 'minitest/autorun'
 class HelloWorldHandlerTest < Minitest::Test
 
   def test_hello_responds_with_name
-    out = service.call_rpc :Hello, name: "World"
-    assert_equal "Hello World", out.message
+    resp = service.call_rpc :Hello, name: "World"
+    assert_equal "Hello World", resp.message
   end
 
   def test_hello_name_is_mandatory
@@ -98,7 +96,7 @@ class HelloWorldHandlerTest < Minitest::Test
 
   def service
     handler = HelloWorldHandler.new()
-    Example::HelloWorld.new(handler)
+    Example::HelloWorldService.new(handler)
   end
 end
 ```
@@ -109,15 +107,14 @@ end
 The service is a [Rack app](https://rack.github.io/) instantiated with your handler impementation. For example:
 
 ```ruby
-require 'rack'
-
-handler = HelloWorldHandler.new() # your handler implementation
+handler = HelloWorldHandler.new()
 service = Example::HelloWorldService.new(handler)
 
+require 'rack'
 Rack::Handler::WEBrick.run service
 ```
 
-Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other frameworks.
+Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other HTTP frameworks.
 
 
 ## Twirp Clients
@@ -128,7 +125,7 @@ Instantiate the client with the base_url:
 c = Example::HelloWorldClient.new("http://localhost:3000")
 ```
 
-Generated clients implement the methods defined in the proto file:
+Clients implement the same methods as in the service and return a response object with `data` or `error`:
 
 ```ruby
 resp = c.hello(name: "World")
@@ -141,7 +138,7 @@ end
 
 ### Protobuf or JSON
 
-Clients use Protobuf by default. To make a client that uses JSON encoding, set the content_type option:
+Clients use Protobuf by default. To use JSON, set the `content_type` option:
 
 ```ruby
 c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "application/json")
@@ -149,16 +146,14 @@ c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "applic
 
 ### Configure Clients with Faraday
 
-A Twirp client takes care of routing, serialization and error handling.
-
-Other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
+While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
 
 ```ruby
 conn = Faraday.new(:url => 'http://localhost:3000') do |c|
-  c.use Faraday::Request::Retry # configure retries
+  c.use Faraday::Request::Retry
   c.use Faraday::Request::BasicAuthentication, 'login', 'pass'
   c.use Faraday::Response::Logger # log to STDOUT
-  c.use Faraday::Adapter::NetHttp # multiple adapters for different HTTP libraries
+  c.use Faraday::Adapter::NetHttp # can use different HTTP libraries
 end
 
 c = Example::HelloWorldClient.new(conn)
