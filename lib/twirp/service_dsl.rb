@@ -35,12 +35,12 @@ module Twirp
     # Get configured package name as String.
     # An empty value means that there's no package.
     def package_name
-      @package_name ||= @package.to_s
+      @package.to_s
     end
 
     # Service name as String. Defaults to the class name.
     def service_name
-      @service_name ||= (@service || self.name.split("::").last).to_s
+      (@service || self.name.split("::").last).to_s
     end
 
     # Service name with package prefix, which should uniquelly identifiy the service,
@@ -48,7 +48,7 @@ module Twirp
     # This can be used as a path prefix to route requests to the service, because a Twirp URL is:
     # "#{base_url}/#{service_full_name}/#{method]"
     def service_full_name
-      @service_full_name ||= package_name.empty? ? service_name : "#{package_name}.#{service_name}"
+      package_name.empty? ? service_name : "#{package_name}.#{service_name}"
     end
 
     # Get raw definitions for rpc methods.

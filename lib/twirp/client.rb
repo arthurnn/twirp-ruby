@@ -1,5 +1,4 @@
 require 'faraday'
-require 'json'
 
 require_relative 'encoding'
 require_relative 'error'
@@ -41,14 +40,16 @@ module Twirp
       if !Encoding.valid_content_type?(@content_type)
         raise ArgumentError.new("Invalid content_type #{@content_type.inspect}. Expected one of #{Encoding.valid_content_types.inspect}")
       end
-    end
 
-    def service_full_name
-      self.class.service_full_name
+      @service_full_name = if opts[:package] || opts[:service]
+        opts[:package].to_s.empty? ? opts[:service].to_s : "#{opts[:package]}.#{opts[:service]}"
+      else
+        self.class.service_full_name # defined through DSL
+      end
     end
 
     def rpc_path(rpc_method)
-      "/#{service_full_name}/#{rpc_method}"
+      "/#{@service_full_name}/#{rpc_method}"
     end
 
     # Make a remote procedure call to a defined rpc_method. The input can be a Proto message instance,
@@ -79,6 +80,27 @@ module Twirp
       end
 
       data = Encoding.decode(resp.body, rpcdef[:output_class], @content_type)
+      return ClientResp.new(data, nil)
+    end
+
+    # Convenience method to call any rpc method with dynamic json attributes.
+    # It is like .rpc but does not use the defined Protobuf messages to serialize/deserialize data;
+    # the request attrs can be anything and the response data is always a plain Hash of attributes.
+    # This is useful to test a service before doing any code-generation.
+    def json(rpc_method, attrs={})
+      body = Encoding.encode_json(attrs)
+
+      resp = @conn.post do |r|
+        r.url rpc_path(rpc_method)
+        r.headers['Content-Type'] = Encoding::JSON
+        r.body = body
+      end
+
+      if resp.status != 200
+        return ClientResp.new(nil, error_from_response(resp))
+      end
+
+      data = Encoding.decode_json(resp.body)
       return ClientResp.new(data, nil)
     end
 

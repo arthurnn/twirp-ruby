@@ -1,5 +1,3 @@
-require 'json'
-
 require_relative 'encoding'
 require_relative 'error'
 require_relative 'service_dsl'
@@ -34,8 +32,8 @@ module Twirp
     def exception_raised(&block) @exception_raised << block; end
 
     # Service full_name is needed to route http requests to this service.
-    def full_name; self.class.service_full_name; end
-    def name; self.class.service_name; end
+    def full_name; @full_name ||= self.class.service_full_name; end
+    def name; @name ||= self.class.service_name; end
 
     # Rack app handler.
     def call(rack_env)
@@ -168,7 +166,7 @@ module Twirp
         @on_error.each{|hook| hook.call(twerr, env) }
 
         status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
-        resp_body = JSON.generate(twerr.to_h)
+        resp_body = Encoding.encode_json(twerr.to_h)
         [status, error_response_headers, [resp_body]]
 
       rescue => e
@@ -185,7 +183,7 @@ module Twirp
       end
 
       twerr = Twirp::Error.internal_with(e)
-      resp_body = JSON.generate(twerr.to_h)
+      resp_body = Encoding.encode_json(twerr.to_h)
       [500, error_response_headers, [resp_body]]
     end
 
