@@ -4,12 +4,12 @@ module Twirp
 
     # Configure service package name.
     def package(name)
-      @package = name
+      @package = name.to_s
     end
 
     # Configure service name.
     def service(name)
-      @service = name
+      @service = name.to_s
     end
 
     # Configure service rpc methods.

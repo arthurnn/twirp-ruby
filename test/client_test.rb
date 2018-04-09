@@ -27,39 +27,39 @@ class ClientTest < Minitest::Test
     end
   end
 
-  def test_call_rpc_success
+  def test_rpc_success
     c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [200, protoheader, proto(Foo, foo: "out")]
     })
-    resp = c.call_rpc(:Foo, foo: "in")
+    resp = c.rpc :Foo, foo: "in"
     assert_nil resp.error
     refute_nil resp.data
     assert_equal "out", resp.data.foo
   end
 
-  def test_call_rpc_error
+  def test_rpc_error
     c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [400, {}, json(code: "invalid_argument", msg: "dont like empty")]
     })
-    resp = c.call_rpc(:Foo, foo: "")
+    resp = c.rpc :Foo, foo: ""
     assert_nil resp.data
     refute_nil resp.error
     assert_equal :invalid_argument, resp.error.code
     assert_equal "dont like empty", resp.error.msg
   end
 
-  def test_call_rpc_serialization_exception
+  def test_rpc_serialization_exception
     c = FooClient.new(conn_stub("/Foo/Foo") {|req|
       [200, protoheader, "badstuff"]
     })
     assert_raises Google::Protobuf::ParseError do
-      resp = c.call_rpc(:Foo, foo: "in")
+      c.rpc :Foo, foo: "in"
     end
   end
 
-  def test_call_rpc_invalid_method
+  def test_rpc_invalid_method
     c = FooClient.new("http://localhost")
-    resp = c.call_rpc(:OtherStuff, foo: "noo")
+    resp = c.rpc :OtherStuff, foo: "noo"
     assert_nil resp.data
     refute_nil resp.error
     assert_equal :bad_route, resp.error.code
@@ -174,12 +174,74 @@ class ClientTest < Minitest::Test
     assert_equal '{"msg":"I have no code of honor"}', resp.error.meta[:body]
   end
 
+  def test_json_success
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+
+    resp = c.make_hat({})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_json_serialized_request_body_attrs
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal "application/json", req.request_headers['Content-Type']
+      assert_equal '{"inches":666}', req.body # body is valid json
+      [200, jsonheader, '{}']
+    }, content_type: "application/json")
+
+    resp = c.make_hat(inches: 666)
+    assert_nil resp.error
+    refute_nil resp.data
+  end
+
+  def test_json_serialized_request_body_object
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal "application/json", req.request_headers['Content-Type']
+      assert_equal '{"inches":666}', req.body # body is valid json
+      [200, jsonheader, '{}']
+    }, content_type: "application/json")
+
+    resp = c.make_hat(Example::Size.new(inches: 666))
+    assert_nil resp.error
+    refute_nil resp.data
+  end
+
+  def test_json_error
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [500, {}, json(code: "internal", msg: "something went wrong")]
+    }, content_type: "application/json")
+
+    resp = c.make_hat(inches: 1)
+    assert_nil resp.data
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal "something went wrong", resp.error.msg
+  end
+
+  def test_json_missing_response_header
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [200, {}, json(inches: 99, color: "red")]
+    }, content_type: "application/json")
+
+    resp = c.make_hat({})
+    refute_nil resp.error
+    assert_equal :internal, resp.error.code
+    assert_equal 'Expected response Content-Type "application/json" but found nil', resp.error.msg
+  end
+
 
   # Test Helpers
   # ------------
 
   def protoheader
     {'Content-Type' => 'application/protobuf'}
+  end
+
+  def jsonheader
+    {'Content-Type' => 'application/json'}
   end
 
   def proto(clss, attrs={})
