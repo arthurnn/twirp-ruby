@@ -27,6 +27,28 @@ class ClientTest < Minitest::Test
     end
   end
 
+  def test_dsl_method_definition_collision
+    # To avoid collisions, the Twirp::Client class should have very few methods
+    mthds = Twirp::Client.instance_methods(false)
+    assert_equal [:json, :rpc], mthds
+
+    # If one of the methods is being implemented through the DSL, the colision should be avoided
+    num_mthds = EmptyClient.instance_methods.size
+    EmptyClient.rpc :Json, Example::Empty, Example::Empty, :ruby_method => :json
+    assert_equal num_mthds, EmptyClient.instance_methods.size # no new method was added (collision)
+
+    # Make sure that the previous .json method was not modified
+    c = EmptyClient.new(conn_stub("/EmptyClient/Json") {|req|
+      [200, {}, json(foo: "bar")]
+    })
+    resp = c.json(:Json, foo: "bar")
+    assert_equal "bar", resp.data["foo"]
+
+    # Adding any other rpc would work as expected
+    EmptyClient.rpc :Other, Example::Empty, Example::Empty, :ruby_method => :other
+    assert_equal num_mthds + 1, EmptyClient.instance_methods.size # new method added
+  end
+
 
   # Call .rpc on Protobuf client
   # ----------------------------
