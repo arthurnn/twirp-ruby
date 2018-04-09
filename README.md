@@ -55,7 +55,7 @@ protoc --proto_path=. --ruby_out=. --twirp_ruby_out=. ./example/hello_world/serv
 
 ## Twirp Service Handler
 
-A Twirp service delegates into a service handler to implement each rpc method. For example a handler for `HelloWorld`:
+A handler is a simple class that implements each rpc method. For example a handler for `HelloWorld`:
 
 ```ruby
 class HelloWorldHandler
@@ -74,6 +74,21 @@ end
 The `req` argument is the request message (input), and the returned value is expected to be the response message, or a `Twirp::Error`.
 
 The `env` argument contains metadata related to the request (e.g. `env[:output_class]`), and other fields that could have been set from before-hooks (e.g. `env[:user_id]` from authentication).
+
+
+### Start the Service
+
+The service is a [Rack app](https://rack.github.io/) instantiated with your handler impementation. For example:
+
+```ruby
+handler = HelloWorldHandler.new()
+service = Example::HelloWorldService.new(handler)
+
+require 'rack'
+Rack::Handler::WEBrick.run service
+```
+
+Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other HTTP frameworks.
 
 ### Unit Tests
 
@@ -102,33 +117,18 @@ end
 ```
 
 
-### Start the Service
-
-The service is a [Rack app](https://rack.github.io/) instantiated with your handler impementation. For example:
-
-```ruby
-handler = HelloWorldHandler.new()
-service = Example::HelloWorldService.new(handler)
-
-require 'rack'
-Rack::Handler::WEBrick.run service
-```
-
-Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other HTTP frameworks.
-
-
 ## Twirp Clients
 
-Instantiate the client with the base_url:
+Clients implement the same methods as the service. For Example:
 
 ```ruby
 c = Example::HelloWorldClient.new("http://localhost:3000")
+resp = c.hello(name: "World") # serialized as Protobuf
 ```
 
-Clients implement the same methods as in the service and return a response object with `data` or `error`:
+The response object can have `data` or an `error`.
 
 ```ruby
-resp = c.hello(name: "World")
 if resp.error
   puts resp.error #=> <Twirp::Error code:... msg:"..." meta:{...}>
 else
@@ -136,9 +136,9 @@ else
 end
 ```
 
-### Configure Clients with Faraday
+#### Configure Clients with Faraday
 
-While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
+While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. Clients can be initialized with a Faraday connection:
 
 ```ruby
 conn = Faraday.new(:url => 'http://localhost:3000') do |c|
@@ -151,21 +151,21 @@ end
 c = Example::HelloWorldClient.new(conn)
 ```
 
-### Protobuf or JSON
+#### Protobuf or JSON
 
 Clients use Protobuf by default. To use JSON, set the `content_type` option as 2nd argument:
 
 ```ruby
-c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "application/json")
+c = Example::HelloWorldClient.new(conn, content_type: "application/json")
 resp = c.hello(name: "World") # serialized as JSON
 ```
 
-### Add-hoc JSON requests
+#### Add-hoc JSON requests
 
 If you just want to make a few quick requests from the console, you can instantiate a plain client and make `.json` calls:
 
 ```ruby
-c = Twirp::Client.new("http://localhost:3000", package: "example", service: "HelloWorld")
+c = Twirp::Client.new(conn, package: "example", service: "HelloWorld")
 resp = c.json(:Hello, name: "World") # serialized as JSON, resp.data is a Hash
 ```
 
