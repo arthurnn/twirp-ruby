@@ -136,14 +136,6 @@ else
 end
 ```
 
-### Protobuf or JSON
-
-Clients use Protobuf by default. To use JSON, set the `content_type` option:
-
-```ruby
-c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "application/json")
-```
-
 ### Configure Clients with Faraday
 
 While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. For example:
@@ -159,12 +151,29 @@ end
 c = Example::HelloWorldClient.new(conn)
 ```
 
+### Protobuf or JSON
+
+Clients use Protobuf by default. To use JSON, set the `content_type` option as 2nd argument:
+
+```ruby
+c = Example::HelloWorldClient.new("http://localhost:3000", content_type: "application/json")
+resp = c.hello(name: "World") # serialized as JSON
+```
+
+### Add-hoc JSON requests
+
+If you just want to make a few quick requests from the console, you can instantiate a plain client and make `.json` calls:
+
+```ruby
+c = Twirp::Client.new("http://localhost:3000", package: "example", service: "HelloWorld")
+resp = c.json(:Hello, name: "World")
+puts resp.data["message"]
+```
+
+
 ## Server Hooks
 
-In the lifecycle of a request, the Twirp service starts by routing the request to a valid
-RPC method. If routing fails, the `on_error` hook is called with a bad_route error.
-If routing succeeds, the `before` hook is called before calling the RPC method handler,
-and then either `on_success` or `on_error` depending if the response is a Twirp error or not.
+In the lifecycle of a server request, Twirp starts by routing the request to a valid RPC method. If routing fails, the `on_error` hook is called with a bad_route error. If routing succeeds, the `before` hook is called before calling the RPC method handler, and then either `on_success` or `on_error` depending if the response is a Twirp error or not.
 
 ```
 routing -> before -> handler -> on_success
@@ -174,9 +183,7 @@ routing -> before -> handler -> on_success
 On every request, one and only one of `on_success` or `on_error` is called.
 
 
-If exceptions are raised, the `exception_raised` hook is called. The exceptioni is wrapped with
-an internal Twirp error, and if the `on_error` hook was not called yet, then it is called with
-the wrapped exception.
+If exceptions are raised, the `exception_raised` hook is called. The exceptioni is wrapped with an internal Twirp error, and if the `on_error` hook was not called yet, then it is called with the wrapped exception.
 
 
 ```
