@@ -9,7 +9,7 @@ require_relative './fake_services'
 class ClientTest < Minitest::Test
 
   def test_new_empty_client
-    c = EmptyClient.new("http://localhost:3000")
+    c = EmptyClient.new("http://localhost:8080")
     refute_nil c
     refute_nil c.instance_variable_get(:@conn) # make sure that connection was assigned
     assert_equal "EmptyClient", c.instance_variable_get(:@service_full_name)
@@ -27,22 +27,31 @@ class ClientTest < Minitest::Test
     end
   end
 
-  def test_dsl_method_definition_collision
-    # To avoid collisions, the Twirp::Client class should have very few methods
-    mthds = Twirp::Client.instance_methods(false)
-    assert_equal [:json, :rpc], mthds
+  def test_dsl_rpc_method_definition_collisions
+    # To avoid collisions, the Twirp::Client class should only have the rpc method.
+    assert_equal [:rpc], Twirp::Client.instance_methods(false)
 
-    # If one of the methods is being implemented through the DSL, the colision should be avoided
+    # If one of the methods is being implemented through the DSL, the colision should be avoided, keeping the previous method.
     num_mthds = EmptyClient.instance_methods.size
-    EmptyClient.rpc :Json, Example::Empty, Example::Empty, :ruby_method => :json
-    assert_equal num_mthds, EmptyClient.instance_methods.size # no new method was added (collision)
+    EmptyClient.rpc :Rpc, Example::Empty, Example::Empty, :ruby_method => :rpc
+    assert_equal num_mthds, EmptyClient.instance_methods.size # no new method was added (is a collision)
 
-    # Make sure that the previous .json method was not modified
-    c = EmptyClient.new(conn_stub("/EmptyClient/Json") {|req|
-      [200, {}, json(foo: "bar")]
+    # Make sure that the previous .rpc method was not modified
+    c = EmptyClient.new(conn_stub("/EmptyClient/Rpc") {|req|
+      [200, protoheader, proto(Example::Empty, {})]
     })
-    resp = c.json(:Json, foo: "bar")
-    assert_equal "bar", resp.data["foo"]
+    resp = c.rpc(:Rpc, {})
+    assert_nil resp.error
+    refute_nil resp.data
+
+    # Adding a method that would override super-class methods like .to_s should also be avoided.
+    EmptyClient.rpc :ToString, Example::Empty, Example::Empty, :ruby_method => :to_s
+    assert_equal num_mthds, EmptyClient.instance_methods.size # no new method was added (is a collision)
+
+    # Make sure that the previous .to_s method was not modified
+    c = EmptyClient.new("http://localhost:8080")
+    resp = c.to_s
+    assert_equal String, resp.class
 
     # Adding any other rpc would work as expected
     EmptyClient.rpc :Other, Example::Empty, Example::Empty, :ruby_method => :other
@@ -78,6 +87,7 @@ class ClientTest < Minitest::Test
   def test_proto_serialized_request_body
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/protobuf", req.request_headers['Content-Type']
+      assert_equal "application/protobuf", req.request_headers['Accept']
 
       size = Example::Size.decode(req.body) # body is valid protobuf
       assert_equal 666, size.inches
@@ -179,6 +189,7 @@ class ClientTest < Minitest::Test
   def test_json_serialized_request_body_attrs
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
+      assert_equal "application/json", req.request_headers['Accept']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
     }, content_type: "application/json")
@@ -191,6 +202,7 @@ class ClientTest < Minitest::Test
   def test_json_serialized_request_body_object
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
+      assert_equal "application/json", req.request_headers['Accept']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
     }, content_type: "application/json")
@@ -260,46 +272,6 @@ class ClientTest < Minitest::Test
   def test_rpc_invalid_method
     c = FooClient.new("http://localhost")
     resp = c.rpc :OtherStuff, foo: "noo"
-    assert_nil resp.data
-    refute_nil resp.error
-    assert_equal :bad_route, resp.error.code
-  end
-
-  # Call .json
-  # ----------
-
-  def test_direct_json_success
-    c = Twirp::Client.new(conn_stub("/my.pkg.Talking/Blah") {|req|
-      assert_equal "application/json", req.request_headers['Content-Type']
-      assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
-
-      [200, {}, json(blah_resp: 3)]
-    }, package: "my.pkg", service: "Talking")
-
-    resp = c.json :Blah, blah1: 1, blah2: 2
-    assert_nil resp.error
-    refute_nil resp.data
-    assert_equal 3, resp.data["blah_resp"]
-  end
-
-  def test_direct_json_error
-    c = Twirp::Client.new(conn_stub("/Foo/Foomo") {|req|
-      [400, {}, json(code: "invalid_argument", msg: "dont like empty")]
-    }, service: "Foo")
-
-    resp = c.json :Foomo, foo: ""
-    assert_nil resp.data
-    refute_nil resp.error
-    assert_equal :invalid_argument, resp.error.code
-    assert_equal "dont like empty", resp.error.msg
-  end
-
-  def test_direct_json_bad_route
-    c = Twirp::Client.new(conn_stub("/Foo/OtherMethod") {|req|
-      [404, {}, 'not here buddy']
-    }, service: "Foo")
-
-    resp = c.json :OtherMethod, foo: ""
     assert_nil resp.data
     refute_nil resp.error
     assert_equal :bad_route, resp.error.code

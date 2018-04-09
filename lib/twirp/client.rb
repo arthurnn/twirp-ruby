@@ -1,5 +1,6 @@
 require 'faraday'
 
+require_relative 'client_resp'
 require_relative 'encoding'
 require_relative 'error'
 require_relative 'service_dsl'
@@ -117,11 +118,7 @@ module Twirp
         raise ArgumentError.new("Invalid content_type #{@content_type.inspect}. Expected one of #{Encoding.valid_content_types.inspect}")
       end
 
-      @service_full_name = if opts[:package] || opts[:service]
-        opts[:package].to_s.empty? ? opts[:service].to_s : "#{opts[:package]}.#{opts[:service]}"
-      else
-        self.class.service_full_name # defined through DSL
-      end
+      @service_full_name = self.class.service_full_name # defined through DSL
     end
 
     # Make a remote procedure call to a defined rpc_method. The input can be a Proto message instance,
@@ -140,6 +137,7 @@ module Twirp
       resp = @conn.post do |r|
         r.url "/#{@service_full_name}/#{rpc_method}"
         r.headers['Content-Type'] = @content_type
+        r.headers['Accept'] = @content_type
         r.body = body
       end
 
@@ -155,35 +153,5 @@ module Twirp
       return ClientResp.new(data, nil)
     end
 
-    # Convenience method to call any rpc method with dynamic json attributes.
-    # It is like .rpc but does not use the defined Protobuf messages to serialize/deserialize data;
-    # the request attrs can be anything and the response data is always a plain Hash of attributes.
-    # This is useful to test a service before doing any code-generation.
-    def json(rpc_method, attrs={})
-      body = Encoding.encode_json(attrs)
-
-      resp = @conn.post do |r|
-        r.url "/#{@service_full_name}/#{rpc_method}"
-        r.headers['Content-Type'] = Encoding::JSON
-        r.body = body
-      end
-
-      if resp.status != 200
-        return ClientResp.new(nil, self.class.error_from_response(resp))
-      end
-
-      data = Encoding.decode_json(resp.body)
-      return ClientResp.new(data, nil)
-    end
-  end
-
-  class ClientResp
-    attr_accessor :data
-    attr_accessor :error
-
-    def initialize(data, error)
-      @data = data
-      @error = error
-    end
   end
 end
