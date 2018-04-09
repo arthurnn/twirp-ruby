@@ -133,13 +133,13 @@ Clients implement the same methods as the service handler. For example the clien
 resp = client.hello(name: "World")
 ```
 
-As an alternative, the `.rpc` method can also be used:
+As an alternative, in case that a service method collides with a Ruby method, you can always use the more general `.rpc` method:
 
 ```ruby
-resp = client.rpc(:Hello, name: "World")
+resp = client.rpc(:Hello, name: "World") # alternative
 ```
 
-The response object has `data` or an `error`.
+If the request fails, the response has an `error` with a `Twirp::Error`. If the request succeeds, the response has `data` with an instance of the response message class.
 
 ```ruby
 if resp.error
@@ -170,7 +170,7 @@ Protobuf is used by default. To serialize with JSON, set the `content_type` opti
 
 ```ruby
 client = Example::HelloWorldClient.new(conn, content_type: "application/json")
-resp = client.hello(name: "World") # serialized as JSON
+resp = client.hello(name: "World") # serialized with JSON
 ```
 
 #### Add-hoc JSON requests
@@ -178,8 +178,10 @@ resp = client.hello(name: "World") # serialized as JSON
 If you just want to make a few quick requests from the console, you can make a `ClientJSON` instance. This doesn't require a service definition at all, but in the other hand, request and response values are not validated. Responses are just a Hash with attributes.
 
 ```ruby
+require 'twirp'
 client = Twirp::ClientJSON.new(conn, package: "example", service: "HelloWorld")
-resp = client.rpc(:Hello, name: "World") # serialized as JSON, resp.data is a Hash
+resp = client.rpc(:Hello, name: "World") # serialized with JSON
+puts resp # resp.data is a plain Hash
 ```
 
 
