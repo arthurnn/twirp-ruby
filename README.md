@@ -121,26 +121,37 @@ end
 
 ## Twirp Clients
 
-Clients implement the same methods as the service. For Example:
+Instantiate a client with the service base url:
 
 ```ruby
-c = Example::HelloWorldClient.new("http://localhost:3000")
-resp = c.hello(name: "World") # serialized as Protobuf
+client = Example::HelloWorldClient.new("http://localhost:3000")
 ```
 
-The response object can have `data` or an `error`.
+Clients implement the same methods as the service handler. For example the client for `HelloWorldService` implements the `hello` method:
+
+```ruby
+resp = client.hello(name: "World")
+```
+
+As an alternative, the `.rpc` method can also be used:
+
+```ruby
+resp = client.rpc(:Hello, name: "World")
+```
+
+The response object has `data` or an `error`.
 
 ```ruby
 if resp.error
-  puts resp.error #=> <Twirp::Error code:... msg:"..." meta:{...}>
+  puts resp.error # <Twirp::Error code:... msg:"..." meta:{...}>
 else
-  puts resp.data #=> <Example::HelloResponse: message:"Hello World">
+  puts resp.data  # <Example::HelloResponse: message:"Hello World">
 end
 ```
 
 #### Configure Clients with Faraday
 
-While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. Clients can be initialized with a Faraday connection:
+While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. Clients can be initialized with a Faraday connection. For example:
 
 ```ruby
 conn = Faraday.new(:url => 'http://localhost:3000') do |c|
@@ -150,25 +161,25 @@ conn = Faraday.new(:url => 'http://localhost:3000') do |c|
   c.use Faraday::Adapter::NetHttp # can use different HTTP libraries
 end
 
-c = Example::HelloWorldClient.new(conn)
+client = Example::HelloWorldClient.new(conn)
 ```
 
 #### Protobuf or JSON
 
-Clients use Protobuf by default. To use JSON, set the `content_type` option as 2nd argument:
+Protobuf is used by default. To serialize with JSON, set the `content_type` option as 2nd argument:
 
 ```ruby
-c = Example::HelloWorldClient.new(conn, content_type: "application/json")
-resp = c.hello(name: "World") # serialized as JSON
+client = Example::HelloWorldClient.new(conn, content_type: "application/json")
+resp = client.hello(name: "World") # serialized as JSON
 ```
 
 #### Add-hoc JSON requests
 
-If you just want to make a few quick requests from the console, you can instantiate a plain client and make `.json` calls:
+If you just want to make a few quick requests from the console, you can make a `ClientJSON` instance. This doesn't require a service definition at all, but in the other hand, request and response values are not validated. Responses are just a Hash with attributes.
 
 ```ruby
-c = Twirp::Client.new(conn, package: "example", service: "HelloWorld")
-resp = c.json(:Hello, name: "World") # serialized as JSON, resp.data is a Hash
+client = Twirp::ClientJSON.new(conn, package: "example", service: "HelloWorld")
+resp = client.rpc(:Hello, name: "World") # serialized as JSON, resp.data is a Hash
 ```
 
 
@@ -192,10 +203,10 @@ routing -> before -> handler
                      ! exception_raised -> on_error
 ```
 
-Hooks are setup in the service instance:
+Hooks are setup in the service instance. For example:
 
 ```ruby
-svc = Example::HelloWorld.new(handler)
+svc = Example::HelloWorldService.new(handler)
 
 svc.before do |rack_env, env|
   # Runs if properly routed to an rpc method, but before calling the method handler.
