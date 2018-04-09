@@ -53,7 +53,7 @@ protoc --proto_path=. --ruby_out=. --twirp_ruby_out=. ./example/hello_world/serv
 ```
 
 
-## Twirp Service
+## Twirp Service Handler
 
 A Twirp service delegates into a service handler to implement each rpc method. For example a handler for `HelloWorld`:
 
@@ -62,10 +62,10 @@ class HelloWorldHandler
 
   def hello(req, env)
     if req.name.empty?
-      Twirp::Error.invalid_argument("name is mandatory")
-    else
-      {message: "Hello #{req.name}"}
+      return Twirp::Error.invalid_argument("is mandatory", argument: "name")
     end
+
+    {message: "Hello #{req.name}"}
   end
 
 end
@@ -166,8 +166,7 @@ If you just want to make a few quick requests from the console, you can instanti
 
 ```ruby
 c = Twirp::Client.new("http://localhost:3000", package: "example", service: "HelloWorld")
-resp = c.json(:Hello, name: "World")
-puts resp.data["message"]
+resp = c.json(:Hello, name: "World") # serialized as JSON, resp.data is a Hash
 ```
 
 
