@@ -7,8 +7,8 @@ require 'twirp/version'
 Gem::Specification.new do |spec|
   spec.name          = "twirp"
   spec.version       = Twirp::VERSION
-  spec.authors       = ["Cyrus A. Forbes", "Mario Izquierdo"]
-  spec.email         = ["forbescyrus@gmail.com", "tothemario@gmail.com"]
+  spec.authors       = ["Cyrus A. Forbes", "Mario Izquierdo", "Kyle Montag"]
+  spec.email         = ["forbescyrus@gmail.com", "tothemario@gmail.com", "thekylemontag@gmail.com"]
   spec.summary       = %q{Twirp services in Ruby.}
   spec.description   = %q{Twirp is a simple RPC framework with protobuf service definitions. The Twirp gem provides native support for Ruby.}
   spec.homepage      = "https://github.com/cyrusaf/ruby-twirp"
