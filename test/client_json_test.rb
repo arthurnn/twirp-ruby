@@ -18,7 +18,6 @@ class ClientJSONTest < Minitest::Test
   def test_client_json_success
     c = Twirp::ClientJSON.new(conn_stub("/my.pkg.Talking/Blah") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
-      assert_equal "application/json", req.request_headers['Accept']
       assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
 
       [200, {}, '{"blah_resp": 3}']

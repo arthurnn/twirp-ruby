@@ -87,7 +87,6 @@ class ClientTest < Minitest::Test
   def test_proto_serialized_request_body
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/protobuf", req.request_headers['Content-Type']
-      assert_equal "application/protobuf", req.request_headers['Accept']
 
       size = Example::Size.decode(req.body) # body is valid protobuf
       assert_equal 666, size.inches
@@ -189,7 +188,6 @@ class ClientTest < Minitest::Test
   def test_json_serialized_request_body_attrs
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
-      assert_equal "application/json", req.request_headers['Accept']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
     }, content_type: "application/json")
@@ -202,7 +200,6 @@ class ClientTest < Minitest::Test
   def test_json_serialized_request_body_object
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
-      assert_equal "application/json", req.request_headers['Accept']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
     }, content_type: "application/json")
