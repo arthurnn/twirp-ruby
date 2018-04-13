@@ -97,7 +97,7 @@ module Twirp
       end
 
       def rpc_path(service_full_name, rpc_method)
-        "/#{service_full_name}/#{rpc_method}"
+        "/twirp/#{service_full_name}/#{rpc_method}"
       end
 
     end # class << self
