@@ -77,17 +77,23 @@ For each rpc method:
 
 #### Start the Service
 
-Instantiate the service with your handler impementation. The service is a [Rack app](https://rack.github.io/). For example:
+Instantiate the service with your handler impementation. Here is where you would use dependency injection or any other extra setup.
 
 ```ruby
 handler = HelloWorldHandler.new()
 service = Example::HelloWorldService.new(handler)
-
-require 'rack'
-Rack::Handler::WEBrick.run service
 ```
 
-Rack apps can also be mounted as Rails routes (e.g. `mount service, at: service.full_name`) and are compatible with many other HTTP frameworks.
+The service is a [Rack app](https://rack.github.io/), it be mounted in a Rails app (e.g. in /config/routes.rb: `mount service, at: service.full_name`). And are also compatible with many other HTTP frameworks. For example, to mount on Webrick with base_url "http://localhost:3000/twirp":
+
+```ruby
+require 'rack'
+
+path_prefix = "/twirp/" + service.full_name
+server = WEBrick::HTTPServer.new(Port: 3000)
+server.mount path_prefix, Rack::Handler::WEBrick, service
+server.start
+```
 
 #### Unit Tests
 
@@ -121,7 +127,7 @@ end
 Instantiate a client with the service base url:
 
 ```ruby
-client = Example::HelloWorldClient.new("http://localhost:3000")
+client = Example::HelloWorldClient.new("http://localhost:3000/twirp")
 ```
 
 Clients implement the same methods as the service handler. For example the client for `HelloWorldService` implements the `hello` method:
@@ -151,7 +157,7 @@ end
 While Twirp takes care of routing, serialization and error handling, other advanced HTTP options can be configured with [Faraday](https://github.com/lostisland/faraday) middleware. Clients can be initialized with a Faraday connection. For example:
 
 ```ruby
-conn = Faraday.new(:url => 'http://localhost:3000') do |c|
+conn = Faraday.new(:url => 'http://localhost:3000/twirp') do |c|
   c.use Faraday::Request::Retry
   c.use Faraday::Request::BasicAuthentication, 'login', 'pass'
   c.use Faraday::Response::Logger # log to STDOUT
