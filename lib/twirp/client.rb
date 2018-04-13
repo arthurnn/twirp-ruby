@@ -100,7 +100,6 @@ module Twirp
         conn.post do |r|
           r.url "#{service_full_name}/#{rpc_method}"
           r.headers['Content-Type'] = content_type
-          r.headers['Accept'] = content_type
           r.body = body
         end
       end
