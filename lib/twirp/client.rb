@@ -96,8 +96,13 @@ module Twirp
         status >= 300 && status <= 399
       end
 
-      def rpc_path(service_full_name, rpc_method)
-        "/#{service_full_name}/#{rpc_method}"
+      def make_http_request(conn, service_full_name, rpc_method, content_type, body)
+        conn.post do |r|
+          r.url "#{service_full_name}/#{rpc_method}"
+          r.headers['Content-Type'] = content_type
+          r.headers['Accept'] = content_type
+          r.body = body
+        end
       end
 
     end # class << self
@@ -134,13 +139,7 @@ module Twirp
       input = rpcdef[:input_class].new(input) if input.is_a? Hash
       body = Encoding.encode(input, rpcdef[:input_class], @content_type)
 
-      resp = @conn.post do |r|
-        r.url "/#{@service_full_name}/#{rpc_method}"
-        r.headers['Content-Type'] = @content_type
-        r.headers['Accept'] = @content_type
-        r.body = body
-      end
-
+      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, @content_type, body)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end

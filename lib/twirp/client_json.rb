@@ -20,13 +20,7 @@ module Twirp
     def rpc(rpc_method, attrs={})
       body = Encoding.encode_json(attrs)
 
-      resp = @conn.post do |r|
-        r.url "/#{@service_full_name}/#{rpc_method}"
-        r.headers['Content-Type'] = Encoding::JSON
-        r.headers['Accept'] = Encoding::JSON
-        r.body = body
-      end
-
+      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, Encoding::JSON, body)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end

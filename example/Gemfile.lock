@@ -1,9 +1,9 @@
 PATH
   remote: ..
   specs:
-    twirp (0.1.0)
-      faraday
-      google-protobuf (>= 3.0.0)
+    twirp (0.5.0)
+      faraday (~> 0)
+      google-protobuf (~> 3.0, >= 3.0.0)
 
 GEM
   remote: https://rubygems.org/
