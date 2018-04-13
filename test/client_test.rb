@@ -12,6 +12,12 @@ class ClientTest < Minitest::Test
     Twirp::Client.rpc_path(service, rpc)
   end
 
+  def test_rpc_path
+    service_name = 'Foo'
+    rpc_name = 'Bar'
+    assert_equal Twirp::Client.rpc_path(service_name, rpc_name), '/twirp/Foo/Bar'
+  end
+
   def test_new_empty_client
     c = EmptyClient.new("http://localhost:8080")
     refute_nil c
