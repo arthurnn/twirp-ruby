@@ -1,7 +1,10 @@
 require 'rack'
+require 'webrick'
+
 require_relative 'hello_world/service_pb.rb'
 require_relative 'hello_world/service_twirp.rb'
 
+# Service implementation
 class HelloWorldHandler
   def hello(req, env)
     puts ">> Hello #{req.name}"
@@ -9,7 +12,13 @@ class HelloWorldHandler
   end
 end
 
+# Instantiate Service
 handler = HelloWorldHandler.new()
 service = Example::HelloWorldService.new(handler)
 
-Rack::Handler::WEBrick.run service
+
+# Mount on webserver
+path_prefix = "/twirp/" + service.full_name
+server = WEBrick::HTTPServer.new(Port: 8080)
+server.mount path_prefix, Rack::Handler::WEBrick, service
+server.start
