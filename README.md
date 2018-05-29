@@ -15,77 +15,62 @@ Add `gem "twirp"` to your Gemfile, or install with `gem install twirp`.
 [Refer to the Wiki](https://github.com/twitchtv/twirp-ruby/wiki).
 
 
-## Usage Example
+## Example
 
-Define the service and client using the DSL. This can be [auto-generated from a .proto file](https://github.com/twitchtv/twirp-ruby/wiki/Code-Generation).
+Starting with a [.proto file](https://developers.google.com/protocol-buffers/docs/proto3):
 
-```ruby
-module Example
-  class HelloWorldService < Twirp::Service
-    package "example"
-    service "HelloWorld"
-    rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
-  end
+```protobuf
+syntax = "proto3";
 
-  class HelloWorldClient < Twirp::Client
-    client_for HelloWorldService
-  end
-end
+package twirp.example.haberdasher;
+option go_package = "haberdasher";
+
+// Haberdasher service makes hats for clients.
+service Haberdasher {
+  // MakeHat produces a hat of mysterious, randomly-selected color
+  rpc MakeHat(Size) returns (Hat);
+}
+
+message Size {
+  int32 inches = 1; // must be > 0
+}
+
+message Hat {
+  int32 inches = 1;
+  string color = 2; // anything but "invisible"
+  string name = 3; // i.e. "bowler"
+}
 ```
 
-
-Implement each rpc method with a [Service Handler](https://github.com/twitchtv/twirp-ruby/wiki/Service-Handlers). For example:
+Your Service Handler implementation:
 
 ```ruby
-class HelloWorldHandler
-
-  def hello(req, env)
-    if req.name.empty?
-      return Twirp::Error.invalid_argument("name is mandatory")
+class HaberdasherHandler
+  def make_hat(size, env)
+    if size.inches <= 0
+      return Twirp::Error.invalid_argument("I can't make a hat that small!")
     end
 
-    {message: "Hello #{req.name}"}
+    {
+      inches: size.inches,
+      color: ["white", "black", "brown", "red", "blue"].sample,
+      name: ["bowler", "baseball cap", "top hat", "derby"].sample,
+    }
   end
-
 end
 ```
 
-Service Handlers are just plain objects that respond to rpc methods with already serialized requests. Because of this they are [very easy to test](https://github.com/twitchtv/twirp-ruby/wiki/Unit-Tests). Integration with Rack middleware can be done through [service hooks](https://github.com/twitchtv/twirp-ruby/wiki/Service-Hooks), keeping the handler free of dependencies.
-
-Start the service in localhost:
-
+Mount your service in a Rack app, then talk to it using the generated client:
 
 ```ruby
-require 'rack'
+client = Twirp::Example::Haberdasher::HaberdasherClient.new("http://localhost:8080")
 
-handler = HelloWorldHandler.new()
-service = Example::HelloWorldService.new(handler)
-
-path_prefix = "/twirp/" + service.full_name
-server = WEBrick::HTTPServer.new(Port: 3000)
-server.mount path_prefix, Rack::Handler::WEBrick, service
-server.start
-```
-
-Talk to your service using Protobuf from the [client](https://github.com/twitchtv/twirp-ruby/wiki/Twirp-Clients):
-
-```ruby
-client = Example::HelloWorldClient.new("http://localhost:3000/twirp")
-resp = client.hello(name: "World")
-if resp.error
-  puts resp.error # <Twirp::Error code:... msg:"..." meta:{...}>
+resp = client.make_hat(inches: 12)
+if resp.error != nil {
+  puts "oh no: #{resp.error.msg}"
 else
-  puts resp.data  # <Example::HelloResponse: message:"Hello World">
+  hat = resp.data
+  puts "I have a nice new hat: #{hat}"
 end
 ```
 
-Or debug using JSON from `curl`:
-
-```sh
-curl --request POST \
-  --url http://localhost:3000/twirp/example.HelloWorld/Hello \
-  --header 'Content-Type: application/json' \
-  --data '{"name": "World"}'
-```
-
-You can also auto-generate clients in other languages like Golang, JavaScript, Python, Rust, etc. (see [Twirp Golang for more info](https://github.com/twitchtv/twirp)).
