@@ -9,14 +9,7 @@ The [cannonical implementation](https://github.com/twitchtv/twirp) is in Golang.
 
 Add `gem "twirp"` to your Gemfile, or install with `gem install twirp`.
 
-## Features
-
- * Given a `.proto` file, generate Twirp services and clients in Ruby.
- * Implement RPC methods in a plain object called Service Handler.
- * Mount the service as a Rack app.
- * Service hooks for integrations and monitoring.
- * Generated clients.
 
 ## Documentation
 
-[Refer to the Wiki](https://github.com/twitchtv/twirp-ruby/wiki).
+[Go to the Wiki](https://github.com/twitchtv/twirp-ruby/wiki).
