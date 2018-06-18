@@ -1,5 +1,7 @@
 # Twirp HelloWorld Example
 
+### Run the example
+
 To run the example, first make sure you are in the /example folder:
 ```sh
 cd example
@@ -29,18 +31,18 @@ To send requests from Ruby code, runt he hello_world client example:
 bundle exec ruby hello_world_client.rb
 ```
 
-### Run code generator
+### Run code generation
+
+Try to add a new field in `./hello_world/service.proto`, then run the generator code and see if the new field was properly added in the generated files.
 
 Make sure you have the [protobuf compiler](https://github.com/golang/protobuf) (version 3+).
 
 Install the twirp plugin with go:
 ```sh
-go get -u github.com/cyrusaf/ruby-twirp/protoc-gen-twirp_ruby
+go get -u github.com/twitchtv/twirp-ruby/protoc-gen-twirp_ruby
 ```
 
 From the `/example` folder, run the generator command:
 ```sh
 protoc --proto_path=. ./hello_world/service.proto --ruby_out=. --twirp_ruby_out=.
 ```
-
-Try to add a new field in `./hello_world/service.proto`, then run the generator code and see if the new field was properly added in the generated files.
