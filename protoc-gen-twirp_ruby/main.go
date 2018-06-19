@@ -15,7 +15,6 @@ package main
 
 import (
 	"bytes"
-	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,22 +30,15 @@ import (
 )
 
 func main() {
-	versionFlag := flag.Bool("version", false, "print version and exit")
-	flag.Parse()
-	if *versionFlag {
-		fmt.Println(TwirpRubyVersion)
-		os.Exit(0)
-	}
-
-	input := readGenRequest(os.Stdin)
-	g := &generator{version: TwirpRubyVersion, input: input}
-	output := g.Generate()
-	writeGenResponse(os.Stdout, output)
+	genReq := readGenRequest(os.Stdin)
+	g := &generator{version: Version, genReq: genReq}
+	genResp := g.Generate()
+	writeGenResponse(os.Stdout, genResp)
 }
 
 type generator struct {
 	version string
-	input   *plugin.CodeGeneratorRequest
+	genReq  *plugin.CodeGeneratorRequest
 }
 
 func (g *generator) Generate() *plugin.CodeGeneratorResponse {
@@ -117,8 +109,8 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 // protoFilesToGenerate selects descriptor proto files that were explicitly listed on the command-line.
 func (g *generator) protoFilesToGenerate() []*descriptor.FileDescriptorProto {
 	files := []*descriptor.FileDescriptorProto{}
-	for _, name := range g.input.FileToGenerate { // explicitly listed on the command-line
-		for _, f := range g.input.ProtoFile { // all files and everything they import
+	for _, name := range g.genReq.FileToGenerate { // explicitly listed on the command-line
+		for _, f := range g.genReq.ProtoFile { // all files and everything they import
 			if f.GetName() == name { // match
 				files = append(files, f)
 				continue

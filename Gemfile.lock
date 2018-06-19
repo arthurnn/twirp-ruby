@@ -1,23 +1,23 @@
 PATH
   remote: .
   specs:
-    twirp (0.1.0)
-      faraday
-      google-protobuf (>= 3.0.0)
+    twirp (1.0.0)
+      faraday (~> 0)
+      google-protobuf (~> 3.0, >= 3.0.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
     faraday (0.14.0)
       multipart-post (>= 1.2, < 3)
-    google-protobuf (3.5.1.2)
+    google-protobuf (3.5.1.2-universal-darwin)
     multipart-post (2.0.0)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
-  bundler (>= 1)
+  bundler (~> 1)
   twirp!
 
 BUNDLED WITH
