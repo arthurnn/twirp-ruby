@@ -1,7 +1,6 @@
 require 'rack'
 require 'webrick'
 
-require_relative 'hello_world/service_pb.rb'
 require_relative 'hello_world/service_twirp.rb'
 
 # Service implementation
@@ -14,7 +13,7 @@ end
 
 # Instantiate Service
 handler = HelloWorldHandler.new()
-service = Example::HelloWorldService.new(handler)
+service = Example::HelloWorld::HelloWorldService.new(handler)
 
 
 # Mount on webserver
