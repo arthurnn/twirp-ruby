@@ -74,11 +74,12 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 	print(b, "require_relative '%s'", pbFileRelativePath) // require generated file with messages
 	print(b, "")
 
-	indent := ""
+	indent := indentation(0)
 	pkgName := file.GetPackage()
-	if pkgName != "" {
-		print(b, "module %s", packageToRubyModule(pkgName))
-		indent = indent + "  "
+	modules := packageToRubyModules(pkgName)
+	for _, m := range modules {
+		print(b, "%smodule %s", indent, m)
+		indent += 1
 	}
 
 	for i, service := range file.Service {
@@ -104,8 +105,10 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 			print(b, "")
 		}
 	}
-	if pkgName != "" {
-		print(b, "end")
+
+	for range modules {
+		indent -= 1
+		print(b, "%send", indent)
 	}
 
 	return b.String()
@@ -123,6 +126,15 @@ func (g *generator) protoFilesToGenerate() []*descriptor.FileDescriptorProto {
 		}
 	}
 	return files
+}
+
+// indentation represents the level of Ruby indentation for a block of code. It
+// implements the fmt.Stringer interface to output the correct number of spaces
+// for the given level of indentation
+type indentation int
+
+func (i indentation) String() string {
+	return strings.Repeat("  ", int(i))
 }
 
 func print(buf *bytes.Buffer, tpl string, args ...interface{}) {
@@ -190,15 +202,14 @@ func writeGenResponse(w io.Writer, resp *plugin.CodeGeneratorResponse) {
 	}
 }
 
-// packageToModule converts a protobuf package like "my.cool.package" to a
-// Ruby module constant like "My::Cool::Package".
-func packageToRubyModule(pkgName string) string {
-	pkgParts := strings.Split(pkgName, ".")
-	modules := []string{}
-	for _, p := range pkgParts {
-		modules = append(modules, camelCase(p))
+// Modules converts protobuf package name to a list of Ruby module names to
+// represent it. e.g. packageToRubyModules("my.cool.package") => ["My", "Cool", "Package"]
+func packageToRubyModules(pkgName string) []string {
+	parts := []string{}
+	for _, p := range strings.Split(pkgName, ".") {
+		parts = append(parts, camelCase(p))
 	}
-	return strings.Join(modules, "::")
+	return parts
 }
 
 // snakeCase converts a string from CamelCase to snake_case.

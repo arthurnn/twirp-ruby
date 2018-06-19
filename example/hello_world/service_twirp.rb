@@ -2,14 +2,16 @@
 require 'twirp'
 require_relative 'service_pb.rb'
 
-module Example::HelloWorld
-  class HelloWorldService < Twirp::Service
-    package 'example.hello_world'
-    service 'HelloWorld'
-    rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
-  end
+module Example
+  module HelloWorld
+    class HelloWorldService < Twirp::Service
+      package 'example.hello_world'
+      service 'HelloWorld'
+      rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
+    end
 
-  class HelloWorldClient < Twirp::Client
-    client_for HelloWorldService
+    class HelloWorldClient < Twirp::Client
+      client_for HelloWorldService
+    end
   end
 end
