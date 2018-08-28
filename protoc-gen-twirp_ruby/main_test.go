@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 )
 
 func TestPrint(t *testing.T) {
@@ -35,17 +38,25 @@ func TestFilePathOnlyBaseNoExtension(t *testing.T) {
 	}
 }
 
-func TestPackageToRubyModules(t *testing.T) {
+func TestFileToRubyModules(t *testing.T) {
 	tests := []struct {
 		pkgName  string
+		option   string
 		expected []string
 	}{
-		{"example", []string{"Example"}},
-		{"example.hello_world", []string{"Example", "HelloWorld"}},
-		{"m.v.p", []string{"M", "V", "P"}},
+		{"example", "", []string{"Example"}},
+		{"example.hello_world", "", []string{"Example", "HelloWorld"}},
+		{"m.v.p", "", []string{"M", "V", "P"}},
+		{"example", "Changed", []string{"Changed"}},
+		{"example", "Other::Package", []string{"Other", "Package"}},
 	}
 	for _, tt := range tests {
-		actual := packageToRubyModules(tt.pkgName)
+		file := &descriptor.FileDescriptorProto{
+			Package: &tt.pkgName,
+			Options: makeFileOptions(tt.option),
+		}
+
+		actual := fileToRubyModules(file)
 		if !reflect.DeepEqual(actual, tt.expected) {
 			t.Errorf("expected %v; actual %v", tt.expected, actual)
 		}
@@ -83,5 +94,15 @@ func TestCamelCase(t *testing.T) {
 		if tt.expected != tt.actual {
 			t.Errorf("expected %v; actual %v", tt.expected, tt.actual)
 		}
+	}
+}
+
+func makeFileOptions(rp string) *descriptor.FileOptions {
+
+	rpp := &RubyPackageParser{Package: rp}
+	b, _ := proto.Marshal(rpp)
+
+	return &descriptor.FileOptions{
+		XXX_unrecognized: b,
 	}
 }

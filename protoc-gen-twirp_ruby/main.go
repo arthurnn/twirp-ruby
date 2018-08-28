@@ -68,7 +68,7 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 
 	indent := indentation(0)
 	pkgName := file.GetPackage()
-	modules := packageToRubyModules(pkgName)
+	modules := fileToRubyModules(file)
 	for _, m := range modules {
 		print(b, "%smodule %s", indent, m)
 		indent += 1
@@ -194,11 +194,19 @@ func writeGenResponse(w io.Writer, resp *plugin.CodeGeneratorResponse) {
 	}
 }
 
-// Modules converts protobuf package name to a list of Ruby module names to
-// represent it. e.g. packageToRubyModules("my.cool.package") => ["My", "Cool", "Package"]
-func packageToRubyModules(pkgName string) []string {
+// fileToRubyModules uses the `ruby_package` option added in protobuf v3.6.0 and will fall back to
+// converting the protobuf package name to a list of Ruby module names to represent it
+// e.g. "my.cool.package" => ["My", "Cool", "Package"]
+func fileToRubyModules(file *descriptor.FileDescriptorProto) []string {
+
+	r := new(RubyPackageParser)
+	proto.Unmarshal(file.Options.XXX_unrecognized, r)
+	if r.Package != "" {
+		return strings.Split(r.Package, "::")
+	}
+
 	parts := []string{}
-	for _, p := range strings.Split(pkgName, ".") {
+	for _, p := range strings.Split(file.GetPackage(), ".") {
 		parts = append(parts, camelCase(p))
 	}
 	return parts
@@ -273,3 +281,12 @@ func isASCIILower(c byte) bool {
 func isASCIIDigit(c byte) bool {
 	return '0' <= c && c <= '9'
 }
+
+// RubyPackageParser can parse the ruby package option added in protobuf v3.6.0 but not yet in golang/protobuf
+type RubyPackageParser struct {
+	Package string `protobuf:"bytes,45,opt,name=ruby_package,json=rubyPackage,proto2" json:"ruby_package,omitempty"`
+}
+
+func (m *RubyPackageParser) Reset()         { *m = RubyPackageParser{} }
+func (m *RubyPackageParser) String() string { return proto.CompactTextString(m) }
+func (*RubyPackageParser) ProtoMessage()    {}
