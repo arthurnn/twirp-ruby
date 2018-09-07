@@ -78,6 +78,8 @@ func TestCamelCase(t *testing.T) {
 		{camelCase("FooBar"), "FooBar"},
 		{camelCase("fooBar"), "FooBar"},
 		{camelCase("myLong_miXEDName"), "MyLongMiXEDName"},
+		{camelCase("a2z"), "A2z"},
+		{camelCase("a_2z"), "A2z"},
 	}
 	for _, tt := range tests {
 		if tt.expected != tt.actual {
