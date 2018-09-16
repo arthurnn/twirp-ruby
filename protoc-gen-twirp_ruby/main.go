@@ -198,15 +198,19 @@ func writeGenResponse(w io.Writer, resp *plugin.CodeGeneratorResponse) {
 // converting the protobuf package name to a list of Ruby module names to represent it
 // e.g. "my.cool.package" => ["My", "Cool", "Package"]
 func fileToRubyModules(file *descriptor.FileDescriptorProto) []string {
-
 	r := new(RubyPackageParser)
 	proto.Unmarshal(file.Options.XXX_unrecognized, r)
 	if r.Package != "" {
 		return strings.Split(r.Package, "::")
-	}
+  }
+
+  pkgName := file.GetPackage()
+  if pkgName == "" {
+		return []string{} // no modules
+  }
 
 	parts := []string{}
-	for _, p := range strings.Split(file.GetPackage(), ".") {
+	for _, p := range strings.Split(pkgName, ".") {
 		parts = append(parts, camelCase(p))
 	}
 	return parts
@@ -250,12 +254,8 @@ func camelCase(s string) string {
 	// case letter. Digits are treated as words.
 	for ; i < len(s); i++ {
 		c := s[i]
-		if c == '_' && i+1 < len(s) && isASCIILower(s[i+1]) {
+		if c == '_' && i+1 < len(s) && (isASCIILower(s[i+1]) || isASCIIDigit(s[i+1])) {
 			continue // Skip the underscore in s.
-		}
-		if isASCIIDigit(c) {
-			t = append(t, c)
-			continue
 		}
 		// Assume we have a letter now - if not, it's a bogus identifier. The next
 		// word is a sequence of characters that must start upper case.
@@ -264,7 +264,7 @@ func camelCase(s string) string {
 		}
 		t = append(t, c) // Guaranteed not lower case.
 		// Accept lower case sequence that follows.
-		for i+1 < len(s) && isASCIILower(s[i+1]) {
+		for i+1 < len(s) && (isASCIILower(s[i+1]) || isASCIIDigit(s[i+1])) {
 			i++
 			t = append(t, s[i])
 		}

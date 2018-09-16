@@ -44,11 +44,15 @@ func TestFileToRubyModules(t *testing.T) {
 		option   string
 		expected []string
 	}{
+
+    {"", "", []string{}},
 		{"example", "", []string{"Example"}},
 		{"example.hello_world", "", []string{"Example", "HelloWorld"}},
 		{"m.v.p", "", []string{"M", "V", "P"}},
-		{"example", "Changed", []string{"Changed"}},
-		{"example", "Other::Package", []string{"Other", "Package"}},
+    {"p99.a2z", "", []string{"P99", "A2z"}}, // with numbers
+
+    {"example", "RubyPackageOption", []string{"RubyPackageOption"}},
+    {"package.is.ignored", "Other::Ruby::Package", []string{"Other", "Ruby", "Package"}},
 	}
 	for _, tt := range tests {
 		file := &descriptor.FileDescriptorProto{
@@ -89,6 +93,8 @@ func TestCamelCase(t *testing.T) {
 		{camelCase("FooBar"), "FooBar"},
 		{camelCase("fooBar"), "FooBar"},
 		{camelCase("myLong_miXEDName"), "MyLongMiXEDName"},
+		{camelCase("a2z"), "A2z"},
+		{camelCase("a_2z"), "A2z"},
 	}
 	for _, tt := range tests {
 		if tt.expected != tt.actual {
