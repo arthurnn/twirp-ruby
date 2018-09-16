@@ -197,6 +197,10 @@ func writeGenResponse(w io.Writer, resp *plugin.CodeGeneratorResponse) {
 // Modules converts protobuf package name to a list of Ruby module names to
 // represent it. e.g. packageToRubyModules("my.cool.package") => ["My", "Cool", "Package"]
 func packageToRubyModules(pkgName string) []string {
+	if pkgName == "" {
+		return []string{} // no modules
+	}
+
 	parts := []string{}
 	for _, p := range strings.Split(pkgName, ".") {
 		parts = append(parts, camelCase(p))
