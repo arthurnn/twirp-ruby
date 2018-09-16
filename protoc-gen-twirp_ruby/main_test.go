@@ -43,6 +43,8 @@ func TestPackageToRubyModules(t *testing.T) {
 		{"example", []string{"Example"}},
 		{"example.hello_world", []string{"Example", "HelloWorld"}},
 		{"m.v.p", []string{"M", "V", "P"}},
+		{"p99.a2z", []string{"P99", "A2z"}}, // with numbers
+		{"", []string{}},                    // empty, no modules
 	}
 	for _, tt := range tests {
 		actual := packageToRubyModules(tt.pkgName)
