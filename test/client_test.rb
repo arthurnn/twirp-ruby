@@ -72,6 +72,17 @@ class ClientTest < Minitest::Test
     assert_equal "red", resp.data.color
   end
 
+  def test_proto_send_headers
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal "Bar", req.request_headers['My-Foo-Header']
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({}, headers: {"My-Foo-Header": "Bar"})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
   def test_proto_serialized_request_body_attrs
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       size = Example::Size.decode(req.body) # body is valid protobuf
@@ -185,6 +196,17 @@ class ClientTest < Minitest::Test
     assert_equal "red", resp.data.color
   end
 
+  def test_json_send_headers
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal "Bar", req.request_headers['My-Foo-Header']
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+    resp = c.make_hat({}, headers: {"My-Foo-Header": "Bar"})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
   def test_json_serialized_request_body_attrs
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
@@ -241,6 +263,17 @@ class ClientTest < Minitest::Test
       [200, protoheader, proto(Foo, foo: "out")]
     })
     resp = c.rpc :Foo, foo: "in"
+    assert_nil resp.error
+    refute_nil resp.data
+    assert_equal "out", resp.data.foo
+  end
+
+  def test_rpc_send_headers
+    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
+      assert_equal "Bar", req.request_headers['My-Foo-Header']
+      [200, protoheader, proto(Foo, foo: "out")]
+    })
+    resp = c.rpc :Foo, {foo: "in"}, headers: {"My-Foo-Header": "Bar"}
     assert_nil resp.error
     refute_nil resp.data
     assert_equal "out", resp.data.foo
