@@ -30,10 +30,10 @@ module Twirp
 
     # This implementation does not use the defined Protobuf messages to serialize/deserialize data;
     # the request attrs can be anything and the response data is always a plain Hash of attributes.
-    def rpc(rpc_method, attrs={})
+    def rpc(rpc_method, attrs={}, req_opts=nil)
       body = Encoding.encode_json(attrs)
 
-      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, Encoding::JSON, body)
+      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, Encoding::JSON, req_opts, body)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end

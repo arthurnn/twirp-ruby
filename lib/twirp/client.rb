@@ -36,11 +36,11 @@ module Twirp
         end
       end
 
-      # Hook for ServiceDSL#rpc to define a new method client.<ruby_method>(input, opts).
+      # Hook for ServiceDSL#rpc to define a new method client.<ruby_method>(input, req_opts).
       def rpc_define_method(rpcdef)
         unless method_defined? rpcdef[:ruby_method] # collision with existing rpc method
-          define_method rpcdef[:ruby_method] do |input|
-            rpc(rpcdef[:rpc_method], input)
+          define_method rpcdef[:ruby_method] do |input, req_opts=nil|
+            rpc(rpcdef[:rpc_method], input, req_opts)
           end
         end
       end
@@ -109,11 +109,17 @@ module Twirp
         status >= 300 && status <= 399
       end
 
-      def make_http_request(conn, service_full_name, rpc_method, content_type, body)
+      def make_http_request(conn, service_full_name, rpc_method, content_type, req_opts, body)
         conn.post do |r|
           r.url "#{service_full_name}/#{rpc_method}"
           r.headers['Content-Type'] = content_type
           r.body = body
+
+          if req_opts && req_opts[:headers]
+            req_opts[:headers].each do |k, v|
+              r.headers[k] = v
+            end
+          end
         end
       end
 
@@ -142,25 +148,27 @@ module Twirp
     # or the attributes (Hash) to instantiate it. Returns a ClientResp instance with an instance of
     # output_class, or a Twirp::Error. The input and output classes are the ones configued with the rpc DSL.
     # If rpc_method was not defined with the rpc DSL then a response with a bad_route error is returned instead.
-    def rpc(rpc_method, input)
+    def rpc(rpc_method, input, req_opts=nil)
       rpcdef = self.class.rpcs[rpc_method.to_s]
       if !rpcdef
         return ClientResp.new(nil, Twirp::Error.bad_route("rpc not defined on this client"))
       end
 
-      input = rpcdef[:input_class].new(input) if input.is_a? Hash
-      body = Encoding.encode(input, rpcdef[:input_class], @content_type)
+      content_type = (req_opts && req_opts[:headers] && req_opts[:headers]['Content-Type']) || @content_type
 
-      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, @content_type, body)
+      input = rpcdef[:input_class].new(input) if input.is_a? Hash
+      body = Encoding.encode(input, rpcdef[:input_class], content_type)
+
+      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, content_type, req_opts, body)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end
 
-      if resp.headers['Content-Type'] != @content_type
-        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type #{@content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
+      if resp.headers['Content-Type'] != content_type
+        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
       end
 
-      data = Encoding.decode(resp.body, rpcdef[:output_class], @content_type)
+      data = Encoding.decode(resp.body, rpcdef[:output_class], content_type)
       return ClientResp.new(data, nil)
     end
 
