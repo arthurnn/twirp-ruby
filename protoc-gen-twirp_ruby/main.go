@@ -68,7 +68,7 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 
 	indent := indentation(0)
 	pkgName := file.GetPackage()
-	modules := packageToRubyModules(pkgName)
+	modules := splitRubyConstants(pkgName)
 	for _, m := range modules {
 		print(b, "%smodule %s", indent, m)
 		indent += 1
@@ -84,8 +84,10 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 		print(b, "%s  service '%s'", indent, svcName)
 		for _, method := range service.GetMethod() {
 			rpcName := method.GetName()
+			rpcInput := toRubyType(method.GetInputType(), modules)
+			rpcOutput := toRubyType(method.GetOutputType(), modules)
 			print(b, "%s  rpc :%s, %s, %s, :ruby_method => :%s",
-				indent, rpcName, methodInputName(method), methodOutputName(method), snakeCase(rpcName))
+				indent, rpcName, rpcInput, rpcOutput, snakeCase(rpcName))
 		}
 		print(b, "%send", indent)
 		print(b, "")
@@ -147,18 +149,6 @@ func noExtension(path string) string {
 	return strings.TrimSuffix(path, ext)
 }
 
-func methodInputName(meth *descriptor.MethodDescriptorProto) string {
-	fullName := meth.GetInputType()
-	split := strings.Split(fullName, ".")
-	return split[len(split)-1]
-}
-
-func methodOutputName(meth *descriptor.MethodDescriptorProto) string {
-	fullName := meth.GetOutputType()
-	split := strings.Split(fullName, ".")
-	return split[len(split)-1]
-}
-
 func Fail(msgs ...string) {
 	s := strings.Join(msgs, " ")
 	log.Print("error:", s)
@@ -194,15 +184,42 @@ func writeGenResponse(w io.Writer, resp *plugin.CodeGeneratorResponse) {
 	}
 }
 
-// Modules converts protobuf package name to a list of Ruby module names to
-// represent it. e.g. packageToRubyModules("my.cool.package") => ["My", "Cool", "Package"]
-func packageToRubyModules(pkgName string) []string {
-	if pkgName == "" {
+// toRubyType converts a protobuf type reference to a Ruby constant.
+// e.g. toRubyType("MyMessage", []string{}) => "MyMessage"
+// e.g. toRubyType(".foo.my_message", []string{}) => "Foo::MyMessage"
+// e.g. toRubyType(".foo.my_message", []string{"Foo"}) => "MyMessage"
+// e.g. toRubyType("google.protobuf.Empty", []string{"Foo"}) => "Google::Protobuf::Empty"
+func toRubyType(protoType string, currentModules []string) string {
+	rubyConsts := splitRubyConstants(protoType)
+	if len(rubyConsts) == 0 {
+		return ""
+	}
+	rubyType := strings.Join(rubyConsts, "::")
+
+	if len(rubyType) > 2 && rubyType[0:2] == "::" {
+		rubyType = rubyType[2:len(rubyType)] // Remove leading ::
+	}
+
+	// Remove leading modules if they are the same as in the current context
+	currentModulesConst := strings.Join(currentModules, "::") + "::"
+	if strings.HasPrefix(rubyType, currentModulesConst) {
+		rubyType = rubyType[len(currentModulesConst):len(rubyType)]
+	}
+
+	return rubyType
+}
+
+// splitRubyConstants converts a namespaced protobuf type (package name or mesasge)
+// to a list of names that can be used as Ruby constants.
+// e.g. splitRubyConstants("my.cool.package") => ["My", "Cool", "Package"]
+// e.g. splitRubyConstants("google.protobuf.Empty") => ["Google", "Protobuf", "Empty"]
+func splitRubyConstants(protoPckgName string) []string {
+	if protoPckgName == "" {
 		return []string{} // no modules
 	}
 
 	parts := []string{}
-	for _, p := range strings.Split(pkgName, ".") {
+	for _, p := range strings.Split(protoPckgName, ".") {
 		parts = append(parts, camelCase(p))
 	}
 	return parts

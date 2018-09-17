@@ -35,19 +35,43 @@ func TestFilePathOnlyBaseNoExtension(t *testing.T) {
 	}
 }
 
-func TestPackageToRubyModules(t *testing.T) {
+func TestToRubyType(t *testing.T) {
+	tests := []struct {
+		protoType string
+		modules   []string
+		expected  string
+	}{
+		{"", []string{}, ""},
+		{"", []string{"Foo", "Bar"}, ""},
+		{".foo.my_message", []string{}, "Foo::MyMessage"},
+		{".foo.my_message", []string{"Foo"}, "MyMessage"},
+		{"m.v.p99.hello_world", []string{}, "M::V::P99::HelloWorld"},
+		{"m.v.p99.hello_world", []string{"M", "V"}, "P99::HelloWorld"},
+		{"m.v.p99.hello_world", []string{"M", "V", "P99"}, "HelloWorld"},
+		{"m.v.p99.hello_world", []string{"P99"}, "M::V::P99::HelloWorld"},
+		{"google.protobuf.Empty", []string{"Foo"}, "Google::Protobuf::Empty"},
+	}
+	for _, tt := range tests {
+		actual := toRubyType(tt.protoType, tt.modules)
+		if !reflect.DeepEqual(actual, tt.expected) {
+			t.Errorf("expected %v; actual %v", tt.expected, actual)
+		}
+	}
+}
+
+func TestSplitRubyConstants(t *testing.T) {
 	tests := []struct {
 		pkgName  string
 		expected []string
 	}{
+		{"", []string{}},
 		{"example", []string{"Example"}},
 		{"example.hello_world", []string{"Example", "HelloWorld"}},
 		{"m.v.p", []string{"M", "V", "P"}},
-		{"p99.a2z", []string{"P99", "A2z"}}, // with numbers
-		{"", []string{}},                    // empty, no modules
+		{"p99.a2z", []string{"P99", "A2z"}},
 	}
 	for _, tt := range tests {
-		actual := packageToRubyModules(tt.pkgName)
+		actual := splitRubyConstants(tt.pkgName)
 		if !reflect.DeepEqual(actual, tt.expected) {
 			t.Errorf("expected %v; actual %v", tt.expected, actual)
 		}
