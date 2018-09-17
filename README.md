@@ -13,3 +13,8 @@ Add `gem "twirp"` to your Gemfile, or install with `gem install twirp`.
 ## Documentation
 
 [Go to the Wiki](https://github.com/twitchtv/twirp-ruby/wiki).
+
+
+## Contributing
+
+[Go to the CONTRIBUTING file](CONTRIBUTING.md).
