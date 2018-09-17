@@ -1,6 +1,7 @@
 syntax = "proto3";
 package example.hello_world;
 
+
 service HelloWorld {
     rpc Hello(HelloRequest) returns (HelloResponse);
 }
