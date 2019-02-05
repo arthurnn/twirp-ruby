@@ -12,13 +12,15 @@ GEM
       multipart-post (>= 1.2, < 3)
     google-protobuf (3.5.1.2-universal-darwin)
     multipart-post (2.0.0)
+    rack (2.0.6)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   bundler (~> 1)
+  rack
   twirp!
 
 BUNDLED WITH
-   1.14.6
+   1.16.1
