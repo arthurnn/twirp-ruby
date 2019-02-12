@@ -22,5 +22,5 @@ Gem::Specification.new do |spec|
   spec.add_runtime_dependency 'google-protobuf', '~> 3.0', '>= 3.0.0'
   spec.add_runtime_dependency 'faraday', '~> 0' # for clients
   spec.add_development_dependency 'bundler', '~> 1'
-  spec.add_development_dependency "rack"
+  spec.add_development_dependency "rake"
 end
