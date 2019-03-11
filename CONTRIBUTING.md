@@ -2,7 +2,7 @@
 
 ## Issues and Pull Requests
 
-Features and bugfixes are managed through Github's Issues and Pull Requests. Contributions are wellcome and once approved, they are merged into master.
+Features and bugfixes are managed through Github's Issues and Pull Requests. Contributions are welcome and once approved, they are merged into master.
 
 ## Make a new release (for authors only)
 
