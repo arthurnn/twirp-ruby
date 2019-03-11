@@ -16,7 +16,9 @@ Features and bugfixes are managed through Github's Issues and Pull Requests. Con
 Once enough new features are added, a new release is drafted.
 
  * Merge approved PRs into master.
- * Update VERSION in `lib/twirp/version.rb` and `protoc-gen-twirp_ruby/version.go`, following semantinc versioning.
+ * Update VERSION with semantinc versioning in:
+   * `lib/twirp/version.rb` and
+   * `protoc-gen-twirp_ruby/version.go`
  * Update the example code with new features (if needed), and re-generate code (see [example/README.md](example/README.md)). Make sure that you are using the latest version of `protoc-gen-twirp_ruby`, if the repo is in `$GOPATH/src/github.com/twitchtv/twirp-ruby`, then you only need to do `go install github.com/twitchtv/twirp-ruby/protoc-gen-twirp_ruby` before running the `protoc` command to generate code. The generated code should be annotated with the new version.
  * Run `bundle install` to update the `Gemfile.lock` file with the new version.
  * Run tests.
