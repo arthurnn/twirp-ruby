@@ -140,7 +140,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route',
-      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json',
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json: ' +
+                "Error occurred during parsing: Parse error at 'bad json'",
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
@@ -154,7 +155,8 @@ class ServiceTest < Minitest::Test
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
       "code" => 'bad_route',
-      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf',
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf: ' +
+                'Error occurred during parsing: Unexpected EOF inside skipped data',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
