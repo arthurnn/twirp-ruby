@@ -11,14 +11,16 @@ GEM
     faraday (0.14.0)
       multipart-post (>= 1.2, < 3)
     google-protobuf (3.5.1.2-universal-darwin)
+    minitest (5.11.3)
     multipart-post (2.0.0)
-    rake (12.3.2)
+    rake (12.3.1)
 
 PLATFORMS
   ruby
 
 DEPENDENCIES
   bundler (~> 1)
+  minitest (>= 5)
   rake
   twirp!
 
