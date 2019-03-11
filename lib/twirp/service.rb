@@ -127,8 +127,12 @@ module Twirp
       input = nil
       begin
         input = Encoding.decode(rack_request.body.read, env[:input_class], content_type)
-      rescue
-        return bad_route_error("Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}", rack_request)
+      rescue => e
+        error_msg = "Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}"
+        if e.is_a?(Google::Protobuf::ParseError)
+          error_msg += ": #{e.message.strip}"
+        end
+        return bad_route_error(error_msg, rack_request)
       end
 
       env[:input] = input
