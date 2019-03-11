@@ -9,7 +9,7 @@ Features and bugfixes are managed through Github's Issues and Pull Requests. Con
  * Install gems: `bundle install`
  * Run Ruby tests: `rake`
  * Run Go tests (test code generation): `cd protoc-gen-twirp_ruby` then `go test ./...`
- * Run example code (see `example/README.md`).
+ * Run example code (see [example/README.md](example/README.md)).
 
 ## Make a new release (for authors only)
 

@@ -21,7 +21,7 @@ bundle exec ruby hello_world_server.rb
 Now you can send `curl` requests from another terminal window:
 ```sh
 curl --request POST \
-  --url http://localhost:8080/example.HelloWorld/Hello \
+  --url http://localhost:8080/twirp/example.hello_world.HelloWorld/Hello \
   --header 'Content-Type: application/json' \
   --data '{"name": "World"}'
 ```
