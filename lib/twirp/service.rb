@@ -32,6 +32,7 @@ module Twirp
     def initialize(handler)
       @handler = handler
 
+      @request_received = []
       @before = []
       @on_success = []
       @on_error = []
@@ -39,6 +40,7 @@ module Twirp
     end
 
     # Setup hook blocks.
+    def request_received(&block) @request_received << block; end
     def before(&block) @before << block; end
     def on_success(&block) @on_success << block; end
     def on_error(&block) @on_error << block; end
@@ -52,6 +54,12 @@ module Twirp
     def call(rack_env)
       begin
         env = {}
+
+        @request_received.each do |hook|
+          result = hook.call(rack_env, env)
+          return error_response(result, env) if result.is_a? Twirp::Error
+        end
+
         bad_route = route_request(rack_env, env)
         return error_response(bad_route, env) if bad_route
 

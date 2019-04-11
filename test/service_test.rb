@@ -335,6 +335,64 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
+  def test_request_received_simple
+    handler_method_called = false
+    handler = HaberdasherHandler.new do |size, env|
+      handler_method_called = true
+      {}
+    end
+
+    called_with_env = nil
+    called_with_rack_env = nil
+    svc = Example::Haberdasher.new(handler)
+    svc.request_received do |rack_env, env|
+      env[:request_received_hook_called] = true
+      called_with_env = env
+      called_with_rack_env = rack_env
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, _headers, _body = svc.call(rack_env)
+
+    refute_nil called_with_env, "the request_received hook was called with a Twirp env"
+    assert_equal :MakeHat, called_with_env[:rpc_method]
+    assert_equal Example::Size.new(inches: 10), called_with_env[:input]
+    assert_equal true, called_with_env[:request_received_hook_called]
+
+    refute_nil called_with_rack_env, "the request_received hook was called with a Rack env"
+    assert_equal "POST", called_with_rack_env["REQUEST_METHOD"]
+
+    assert handler_method_called, "the handler method was called"
+    assert_equal 200, status, "response is successful"
+  end
+
+  def test_request_received_returning_twirp_error_cancels_request
+    handler_called = false
+    before_hook_called = false
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      handler_called = true
+      {}
+    end)
+    svc.request_received do |rack_env, env|
+      return Twirp::Error.internal "error from before hook"
+    end
+
+    svc.before do |rack_env, env|
+      before_hook_called = true
+    end
+
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10
+    status, _headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+    refute before_hook_called
+    refute handler_called
+    assert_equal({
+      "code" => 'intenal',
+      "msg"  => 'error from before hook',
+    }, JSON.parse(body[0]))
+  end
+
   def test_before_simple
     handler_method_called = false
     handler = HaberdasherHandler.new do |size, env|
