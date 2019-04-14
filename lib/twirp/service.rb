@@ -24,12 +24,11 @@ module Twirp
 
     class << self
 
-      # Wether to raise exceptions instead of handling them with exception_raised hooks.
+      # Whether to raise exceptions instead of handling them with exception_raised hooks.
       # Useful during tests to easily debug and catch unexpected exceptions.
-      # Default false.
-      attr_accessor :raise_exceptions
+      attr_accessor :raise_exceptions # Default: false
 
-      # Make a Rack response response with a Twirp::Error
+      # Rack response with a Twirp::Error
       def error_response(twerr)
         status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
         headers = {'Content-Type' => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
