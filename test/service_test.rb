@@ -12,6 +12,15 @@ class ServiceTest < Minitest::Test
     Example::Haberdasher.raise_exceptions = true # configure for testing to make debugging easier
   end
 
+  # Class method to make a Rack response with a Twirp errpr
+  def test_service_error_response
+    twerr = Twirp::Error.invalid_argument('foo')
+    resp = Twirp::Service.error_response(twerr)
+    assert_equal 400, resp[0]
+    assert_equal 'application/json', resp[1]['Content-Type']
+    assert_equal '{"code":"invalid_argument","msg":"foo"}', resp[2][0]
+  end
+
   # The rpc DSL should properly build the base Twirp environment for each rpc method.
   def test_rpcs_accessor
     assert_equal 1, Example::Haberdasher.rpcs.size

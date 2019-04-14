@@ -23,10 +23,20 @@ module Twirp
     extend ServiceDSL
 
     class << self
-      # Raise exceptions instead of handling them with exception_raised hooks.
+
+      # Wether to raise exceptions instead of handling them with exception_raised hooks.
       # Useful during tests to easily debug and catch unexpected exceptions.
       # Default false.
       attr_accessor :raise_exceptions
+
+      # Make a Rack response response with a Twirp::Error
+      def error_response(twerr)
+        status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
+        headers = {'Content-Type' => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
+        resp_body = Encoding.encode_json(twerr.to_h)
+        [status, headers, [resp_body]]
+      end
+
     end
 
     def initialize(handler)
@@ -181,11 +191,7 @@ module Twirp
     def error_response(twerr, env)
       begin
         @on_error.each{|hook| hook.call(twerr, env) }
-
-        status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
-        resp_body = Encoding.encode_json(twerr.to_h)
-        [status, error_response_headers, [resp_body]]
-
+        self.class.error_response(twerr)
       rescue => e
         return exception_response(e, env)
       end
@@ -193,6 +199,7 @@ module Twirp
 
     def exception_response(e, env)
       raise e if self.class.raise_exceptions
+
       begin
         @exception_raised.each{|hook| hook.call(e, env) }
       rescue => hook_e
@@ -200,13 +207,7 @@ module Twirp
       end
 
       twerr = Twirp::Error.internal_with(e)
-      resp_body = Encoding.encode_json(twerr.to_h)
-      [500, error_response_headers, [resp_body]]
-    end
-
-    def error_response_headers
-      # Twirp errors are always JSON, even if the request was protobuf
-      {'Content-Type' => Encoding::JSON}
+      self.class.error_response(twerr)
     end
 
   end
