@@ -49,10 +49,10 @@ module Twirp
       ERROR_CODES_TO_HTTP_STATUS.key? code # one of the valid symbols
     end
 
-    # Use this constructors to ensure the errors have valid error codes. Example:
+    # Code constructors to ensure valid error codes. Example:
     #     Twirp::Error.internal("boom")
-    #     Twirp::Error.invalid_argument("foo is mandatory", argument: "foo")
-    #     Twirp::Error.permission_denied("thou shall not pass!", target: "Balrog")
+    #     Twirp::Error.invalid_argument("foo is mandatory", mymeta: "foobar")
+    #     Twirp::Error.permission_denied("Thou shall not pass!", target: "Balrog")
     ERROR_CODES.each do |code|
       define_singleton_method code do |msg, meta=nil|
         new(code, msg, meta)
@@ -62,7 +62,7 @@ module Twirp
     # Wrap another error as a Twirp::Error :internal.
     def self.internal_with(err)
       twerr = internal err.message, cause: err.class.name
-      twerr.cause = err
+      twerr.cause = err # availabe in error hook for inspection, but not in the response
       twerr
     end
 
@@ -80,6 +80,7 @@ module Twirp
       @meta = validate_meta(meta)
     end
 
+    # Key-value representation of the error. Can be directly serialized into JSON.
     def to_h
       h = {
         code: @code,
