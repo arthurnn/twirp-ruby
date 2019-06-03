@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package twirp.rubytypes;
+
+import "google/protobuf/empty.proto";
+
+message foo {
+    message my_message{}
+    google.protobuf.Empty empty = 1;
+}
+
+message m {
+    message v {
+        message p99 {
+            message hello_world {}
+        }
+    }
+}
