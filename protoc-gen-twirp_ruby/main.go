@@ -33,14 +33,17 @@ import (
 
 func main() {
 	genReq := readGenRequest(os.Stdin)
-	g := &generator{
-		version: Version,
-		genReq: genReq,
-		fileToGoPackageName: make(map[*descriptor.FileDescriptorProto]string),
-		reg: typemap.New(genReq.ProtoFile),
-	}
-	genResp := g.Generate()
+	genResp := newGenerator(genReq).Generate()
 	writeGenResponse(os.Stdout, genResp)
+}
+
+func newGenerator(genReq *plugin.CodeGeneratorRequest) *generator {
+	return &generator{
+		version:             Version,
+		genReq:              genReq,
+		fileToGoPackageName: make(map[*descriptor.FileDescriptorProto]string),
+		reg:                 typemap.New(genReq.ProtoFile),
+	}
 }
 
 type generator struct {
@@ -48,6 +51,7 @@ type generator struct {
 	genReq  *plugin.CodeGeneratorRequest
 
 	reg                 *typemap.Registry
+	genFiles            []*descriptor.FileDescriptorProto
 	fileToGoPackageName map[*descriptor.FileDescriptorProto]string
 }
 
@@ -62,17 +66,9 @@ func fileDescSliceContains(slice []*descriptor.FileDescriptorProto, f *descripto
 
 func (g *generator) Generate() *plugin.CodeGeneratorResponse {
 	resp := new(plugin.CodeGeneratorResponse)
-	genFiles := g.protoFilesToGenerate()
+	g.findProtoFilesToGenerate()
 
-	for _, f := range g.genReq.ProtoFile {
-		if fileDescSliceContains(genFiles, f) {
-			g.fileToGoPackageName[f] = ""
-		} else {
-			g.fileToGoPackageName[f] = f.GetPackage()
-		}
-	}
-
-	for _, f := range genFiles {
+	for _, f := range g.genFiles {
 		twirpFileName := noExtension(filePath(f)) + "_twirp.rb"             // e.g. "hello_world/service_twirp.rb"
 		pbFileRelativePath := noExtension(onlyBase(filePath(f))) + "_pb.rb" // e.g. "service_pb.rb"
 
@@ -98,7 +94,7 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 	pkgName := file.GetPackage()
 
 	var modules []string
-	if file.Options.RubyPackage != nil {
+	if file.Options != nil && file.Options.RubyPackage != nil {
 		modules = strings.Split(*file.Options.RubyPackage, "::")
 	} else {
 		modules = splitRubyConstants(pkgName)
@@ -144,17 +140,23 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 }
 
 // protoFilesToGenerate selects descriptor proto files that were explicitly listed on the command-line.
-func (g *generator) protoFilesToGenerate() []*descriptor.FileDescriptorProto {
-	files := []*descriptor.FileDescriptorProto{}
+func (g *generator) findProtoFilesToGenerate() {
 	for _, name := range g.genReq.FileToGenerate { // explicitly listed on the command-line
 		for _, f := range g.genReq.ProtoFile { // all files and everything they import
 			if f.GetName() == name { // match
-				files = append(files, f)
+				g.genFiles = append(g.genFiles, f)
 				continue
 			}
 		}
 	}
-	return files
+
+	for _, f := range g.genReq.ProtoFile {
+		if fileDescSliceContains(g.genFiles, f) {
+			g.fileToGoPackageName[f] = ""
+		} else {
+			g.fileToGoPackageName[f] = f.GetPackage()
+		}
+	}
 }
 
 // indentation represents the level of Ruby indentation for a block of code. It
@@ -232,7 +234,7 @@ func (g *generator) toRubyType(protoType string) string {
 
 	var prefix string
 	if pkg := g.fileToGoPackageName[def.File]; pkg != "" {
-		prefix = pkg + "::"
+		prefix = strings.Join(splitRubyConstants(pkg), "::") + "::"
 	}
 
 	var name string

@@ -2,9 +2,35 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
+	"path/filepath"
 	"reflect"
 	"testing"
+
+	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/protoc-gen-go/descriptor"
+	plugin_go "github.com/golang/protobuf/protoc-gen-go/plugin"
+	"github.com/stretchr/testify/require"
 )
+
+func loadTestPb(t *testing.T) []*descriptor.FileDescriptorProto {
+	f, err := ioutil.ReadFile(filepath.Join("testdata", "fileset.pb"))
+	require.NoError(t, err, "unable to read testdata protobuf file")
+
+	set := new(descriptor.FileDescriptorSet)
+	err = proto.Unmarshal(f, set)
+	require.NoError(t, err, "unable to unmarshal testdata protobuf file")
+
+	return set.File
+}
+
+func testGenerator(t *testing.T) *generator {
+	genReq := &plugin_go.CodeGeneratorRequest{
+		FileToGenerate: []string{"rubytypes.proto"},
+		ProtoFile:      loadTestPb(t),
+	}
+	return newGenerator(genReq)
+}
 
 func TestPrint(t *testing.T) {
 	b := new(bytes.Buffer)
@@ -38,21 +64,18 @@ func TestFilePathOnlyBaseNoExtension(t *testing.T) {
 func TestToRubyType(t *testing.T) {
 	tests := []struct {
 		protoType string
-		modules   []string
 		expected  string
 	}{
-		{"", []string{}, ""},
-		{"", []string{"Foo", "Bar"}, ""},
-		{".foo.my_message", []string{}, "Foo::MyMessage"},
-		{".foo.my_message", []string{"Foo"}, "MyMessage"},
-		{"m.v.p99.hello_world", []string{}, "M::V::P99::HelloWorld"},
-		{"m.v.p99.hello_world", []string{"M", "V"}, "P99::HelloWorld"},
-		{"m.v.p99.hello_world", []string{"M", "V", "P99"}, "HelloWorld"},
-		{"m.v.p99.hello_world", []string{"P99"}, "M::V::P99::HelloWorld"},
-		{"google.protobuf.Empty", []string{"Foo"}, "Google::Protobuf::Empty"},
+		{".twirp.rubytypes.foo.my_message", "Foo::MyMessage"},
+		{".twirp.rubytypes.m.v.p99.hello_world", "M::V::P99::HelloWorld"},
+		{".google.protobuf.Empty", "Google::Protobuf::Empty"},
 	}
+
+	g := testGenerator(t)
+	g.findProtoFilesToGenerate()
+
 	for _, tt := range tests {
-		actual := toRubyType(tt.protoType, tt.modules)
+		actual := g.toRubyType(tt.protoType)
 		if !reflect.DeepEqual(actual, tt.expected) {
 			t.Errorf("expected %v; actual %v", tt.expected, actual)
 		}
