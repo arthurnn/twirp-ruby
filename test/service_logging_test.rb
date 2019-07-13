@@ -42,6 +42,31 @@ class ServiceLoggingTest < Minitest::Test
     mock_logger.verify
   end
 
+  def test_logs_500_errors
+    svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
+      1 / 0 # divided by 0
+    end)
+    Example::Haberdasher.raise_exceptions = false
+    rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 10)
+
+    status, headers, body = svc.call(rack_env)
+
+    assert_equal 500, status
+
+  end
+
+  def test_logs_404_errors
+  end
+
+  def test_logs_response_time_for_errors
+  end
+
+  def test_logs_successful_response
+  end
+
+  def test_logs_response_time_for_success
+  end
+
   def proto_req(path, proto_message)
     Rack::MockRequest.env_for path, method: "POST",
       input: proto_message.class.encode(proto_message),
