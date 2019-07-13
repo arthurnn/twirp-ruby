@@ -69,6 +69,12 @@ module Twirp
           return error_response(result, env) if result.is_a? Twirp::Error
         end
 
+        Twirp.logger.log({
+          at: "request.before",
+          twirp_service: self.class.to_s,
+          twirp_method: env[:rpc_method].to_s,
+          env: env
+        }) if !Twirp.logger.nil?
         output = call_handler(env)
         return error_response(output, env) if output.is_a? Twirp::Error
         return success_response(output, env)
