@@ -23,7 +23,7 @@ class ServiceLoggingTest < Minitest::Test
                 :ruby_method=>:make_hat,
                 input: Example::Size.new(inches: 10),
                 :http_response_headers=>{}}
-    mock_logger.expect(:log, true, [{
+    mock_logger.expect(:info, true, [{
       at: "request.before",
       twirp_service: "Example::Haberdasher",
       twirp_method: "MakeHat",
@@ -47,12 +47,25 @@ class ServiceLoggingTest < Minitest::Test
       1 / 0 # divided by 0
     end)
     Example::Haberdasher.raise_exceptions = false
-    rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 10)
+    mock_logger = MiniTest::Mock.new
+    mock_logger.expect(:nil?, false)
+  #  mock_logger.expect(:info, true)
+    mock_logger.expect(:error, true, [{
+      at: "request.error",
+      twirp_service: "Example::Haberdasher",
+      twirp_method: "MakeHat",
+      env: {}
+    }])
 
+    Twirp.logger = mock_logger
+
+    rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 10)
     status, headers, body = svc.call(rack_env)
 
+    Twirp.logger = nil
     assert_equal 500, status
 
+    mock_logger.verify
   end
 
   def test_logs_404_errors

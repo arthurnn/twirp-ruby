@@ -33,6 +33,7 @@ module Twirp
         status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
         headers = {'Content-Type' => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
         resp_body = Encoding.encode_json(twerr.to_h)
+
         [status, headers, [resp_body]]
       end
 
@@ -69,12 +70,13 @@ module Twirp
           return error_response(result, env) if result.is_a? Twirp::Error
         end
 
-        Twirp.logger.log({
+        Twirp.logger.info({
           at: "request.before",
           twirp_service: self.class.to_s,
           twirp_method: env[:rpc_method].to_s,
           env: env
         }) if !Twirp.logger.nil?
+
         output = call_handler(env)
         return error_response(output, env) if output.is_a? Twirp::Error
         return success_response(output, env)
@@ -196,6 +198,14 @@ module Twirp
     def error_response(twerr, env)
       begin
         @on_error.each{|hook| hook.call(twerr, env) }
+        Twirp.logger.error({
+          at: "request.error",
+          twirp_service: self.class.to_s,
+          twerr: twerr,
+          #twirp_method: env[:rpc_method].to_s,
+          env: env
+        }) if !Twirp.logger.nil?
+
         self.class.error_response(twerr)
       rescue => e
         return exception_response(e, env)
@@ -207,6 +217,11 @@ module Twirp
 
       begin
         @exception_raised.each{|hook| hook.call(e, env) }
+        Twirp.logger.error({
+          at: "request.error",
+          twirp_service: self.class.to_s,
+        }) if !Twirp.logger.nil?
+
       rescue => hook_e
         e = hook_e
       end
