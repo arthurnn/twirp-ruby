@@ -10,9 +10,10 @@ GEM
   specs:
     faraday (0.14.0)
       multipart-post (>= 1.2, < 3)
-    google-protobuf (3.5.1.2-universal-darwin)
+    google-protobuf (3.5.1.2)
     minitest (5.11.3)
     multipart-post (2.0.0)
+    rack (2.0.7)
     rake (12.3.1)
 
 PLATFORMS
@@ -21,8 +22,9 @@ PLATFORMS
 DEPENDENCIES
   bundler (~> 1)
   minitest (>= 5)
+  rack
   rake
   twirp!
 
 BUNDLED WITH
-   1.16.1
+   1.17.2

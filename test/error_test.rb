@@ -3,7 +3,7 @@ require 'minitest/autorun'
 require_relative '../lib/twirp/error'
 
 class TestErrorCodes < Minitest::Test
-  
+
   def test_error_codes
     assert_equal 17, Twirp::ERROR_CODES.size
 
@@ -13,7 +13,7 @@ class TestErrorCodes < Minitest::Test
     end
 
     # check some codes
-    assert_includes Twirp::ERROR_CODES, :internal 
+    assert_includes Twirp::ERROR_CODES, :internal
     assert_includes Twirp::ERROR_CODES, :not_found
     assert_includes Twirp::ERROR_CODES, :invalid_argument
   end
@@ -52,7 +52,7 @@ class TestTwirpError < Minitest::Test
   end
 
   def test_invalid_constructor # Make sure that only supported codes are implemented (prevent bad metaprogramming)
-    assert_raises NoMethodError do 
+    assert_raises NoMethodError do
       Twirp::invalid_code_error "should fail"
     end
   end
@@ -67,7 +67,7 @@ class TestTwirpError < Minitest::Test
   def test_new_with_valid_metadata
     err = Twirp::Error.new(:internal, "woops", "meta" => "data", "for this" => "error")
     assert_equal "data", err.meta["meta"]
-    assert_equal "error", err.meta["for this"] 
+    assert_equal "error", err.meta["for this"]
     assert_nil err.meta["something else"]
 
     err = Twirp::Error.new(:internal, "woops", meta: "data")
@@ -78,11 +78,11 @@ class TestTwirpError < Minitest::Test
   def test_invalid_metadata
     Twirp::Error.new(:internal, "woops") # ensure the base case doesn't error
 
-    assert_raises ArgumentError do 
+    assert_raises ArgumentError do
       Twirp::Error.new(:internal, "woops", "string key" => :non_string_value)
     end
 
-    assert_raises ArgumentError do 
+    assert_raises ArgumentError do
       Twirp::Error.new(:internal, "woops", "valid key" => "valid val", "bad_one" => 666)
     end
   end
@@ -91,8 +91,8 @@ class TestTwirpError < Minitest::Test
     # returns a hash with attributes
     err = Twirp::Error.new(:internal, "err msg", "key" => "val")
     assert_equal({code: :internal, msg: "err msg", meta: {"key" => "val"}}, err.to_h)
-  
-    # skips meta if not included 
+
+    # skips meta if not included
     err = Twirp::Error.new(:internal, "err msg")
     assert_equal({code: :internal, msg: "err msg"}, err.to_h)
   end
