@@ -16,9 +16,10 @@ module Twirp
   # Valid Twirp error codes and their mapping to related HTTP status.
   # This can also be used to check if a code is valid (check if not nil).
   ERROR_CODES_TO_HTTP_STATUS = {
-    canceled:             408, # RequestTimeout
-    invalid_argument:     400, # BadRequest
-    deadline_exceeded:    408, # RequestTimeout
+    canceled:             408, # Request Timeout
+    invalid_argument:     400, # Bad Request
+    malformed:            400, # Bad Request
+    deadline_exceeded:    408, # Request Timeout
     not_found:            404, # Not Found
     bad_route:            404, # Not Found
     already_exists:       409, # Conflict
