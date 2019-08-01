@@ -41,8 +41,7 @@ module Twirp
 
 
   # Twirp::Error represents an error response from a Twirp service.
-  # Twirp::Error is not an Exception to be raised, but a value to be returned
-  # by service handlers and received by clients.
+  # Twirp::Error is not an Exception and can not be raised. It is data with msg, code and meta.
   class Error
 
     def self.valid_code?(code)
@@ -62,9 +61,24 @@ module Twirp
     # Wrap another error as a Twirp::Error :internal.
     def self.internal_with(err)
       twerr = internal err.message, cause: err.class.name
-      twerr.cause = err # availabe in error hook for inspection, but not in the response
+      twerr.cause = err # availabe in error hook for inspection, but not in the response or the client
       twerr
     end
+
+    def self.validate_meta(meta)
+      return {} if !meta
+
+      if !meta.is_a? Hash
+        raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
+      end
+      meta.each do |key, value|
+        if !value.is_a?(String)
+          raise ArgumentError.new("Twirp::Error meta values must be Strings, but key #{key.inspect} has the value <#{value.class.to_s}> #{value.inspect}")
+        end
+      end
+      meta
+    end
+
 
     attr_reader :code, :msg, :meta
 
@@ -77,7 +91,7 @@ module Twirp
     def initialize(code, msg, meta=nil)
       @code = code.to_sym
       @msg = msg.to_s
-      @meta = validate_meta(meta)
+      @meta = self.class.validate_meta(meta)
     end
 
     # Key-value representation of the error. Can be directly serialized into JSON.
@@ -98,22 +112,27 @@ module Twirp
       to_s
     end
 
-
-  private
-
-    def validate_meta(meta)
-      return {} if !meta
-
-      if !meta.is_a? Hash
-        raise ArgumentError.new("Twirp::Error meta must be a Hash, but it is a #{meta.class.to_s}")
-      end
-      meta.each do |key, value|
-        if !value.is_a?(String)
-          raise ArgumentError.new("Twirp::Error meta values must be Strings, but key #{key.inspect} has the value <#{value.class.to_s}> #{value.inspect}")
-        end
-      end
-      meta
+    # Convert to StandardError instance that can be raised and rescued. Can be used when handling
+    # client errors if you desire to use exception handlers. For example:
+    #     resp = client.do_stuff(foo: "bar")
+    #     raise resp.error.to_exception if resp.error
+    def to_exception
+      Twirp::Exception.new(@code, @msg, @meta)
     end
 
+  end
+
+
+  # Twirp::Exception has the same methods as Twirp::Error, but it is also an StandardError that
+  # can be raised and rescued.
+  class Exception < StandardError
+    attr_reader :code, :msg, :meta
+
+    def initialize(code, msg, meta=nil)
+      @code = code
+      @msg = msg
+      @meta = meta
+      super("Twirp::Exception code:#{code}, msg:#{msg.inspect}, meta:#{meta.inspect}")
+    end
   end
 end

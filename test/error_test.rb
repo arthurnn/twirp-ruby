@@ -96,5 +96,23 @@ class TestTwirpError < Minitest::Test
     err = Twirp::Error.new(:internal, "err msg")
     assert_equal({code: :internal, msg: "err msg"}, err.to_h)
   end
+
+  def test_to_exception
+    twerr = Twirp::Error.not_found "lost"
+    texcp = twerr.to_exception
+    assert_equal 'Twirp::Exception code:not_found, msg:"lost", meta:{}', texcp.message
+
+    # with metadata
+    twerr2 = Twirp::Error.invalid_argument "required", "argument" => "size"
+    texcp2 = twerr2.to_exception
+    assert_equal 'Twirp::Exception code:invalid_argument, msg:"required", meta:{"argument"=>"size"}', texcp2.message
+
+    assert_raises Twirp::Exception do
+      raise texcp # can be raised and rescued as a Twirp::Exception
+    end
+    assert_raises StandardError do
+      raise texcp2 # can be raised and rescued as a StandardError
+    end
+  end
 end
 
