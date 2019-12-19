@@ -10,9 +10,9 @@ GEM
   specs:
     faraday (0.14.0)
       multipart-post (>= 1.2, < 3)
-    google-protobuf (3.5.1.2-universal-darwin)
+    google-protobuf (3.5.1.2)
     multipart-post (2.0.0)
-    rack (2.0.1)
+    rack (2.0.8)
 
 PLATFORMS
   ruby
