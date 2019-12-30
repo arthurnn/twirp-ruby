@@ -2,19 +2,21 @@
 
 [Twirp is a protocol](https://twitchtv.github.io/twirp/docs/spec_v5.html) for routing and serialization of services defined in a [.proto file](https://developers.google.com/protocol-buffers/docs/proto3), allowing easy implementation of RPC services with auto-generated clients in different languages.
 
-The [canonical implementation](https://github.com/twitchtv/twirp) is in Golang. The Twirp-Ruby project in this repository is the Ruby implementation.
+The [canonical implementation](https://github.com/twitchtv/twirp) is in Golang. The Twirp-Ruby project is the official implementation in Ruby for both server and clients.
 
 
 ## Install
 
 Add `gem "twirp"` to your Gemfile, or install with `gem install twirp`.
 
+To auto-generate Ruby code from a proto file, use the `protoc` plugin and the `--ruby_out` option ([see Wiki page](https://github.com/twitchtv/twirp-ruby/wiki/Code-Generation)).
+
 
 ## Documentation
 
-[Go to the Wiki](https://github.com/twitchtv/twirp-ruby/wiki).
+[On the wiki](https://github.com/twitchtv/twirp-ruby/wiki).
 
 
 ## Contributing
 
-[Go to the CONTRIBUTING file](CONTRIBUTING.md).
+[On the CONTRIBUTING file](CONTRIBUTING.md).
