@@ -61,18 +61,32 @@ module Twirp
     def call(rack_env)
       begin
         env = {}
-        bad_route = route_request(rack_env, env)
-        return error_response(bad_route, env) if bad_route
+        result = nil
+        catch do |return_error|
+          payload = { rack_env: rack_env, env: env }
+          instrument  'route_request.twirp', payload do
+            result = route_request(rack_env, env)
+          end
+          throw(return_error) if result.is_a? Twirp::Error
 
-        @before.each do |hook|
-          result = hook.call(rack_env, env)
-          return error_response(result, env) if result.is_a? Twirp::Error
+          @before.each do |hook|
+            instrument 'before.twirp', payload.merge(hook: hook) do
+              result = hook.call(rack_env, env)
+            end
+            throw(return_error) if result.is_a? Twirp::Error
+          end
+
+          instrument 'handler.twirp', payload do
+            result = call_handler(env)
+          end
+          throw(return_error) if result.is_a? Twirp::Error
         end
 
-        output = call_handler(env)
-        return error_response(output, env) if output.is_a? Twirp::Error
-        return success_response(output, env)
-
+        if result.is_a? Twirp::Error
+          error_response(result, env)
+        else
+          success_response(result, env)
+        end
       rescue => e
         raise e if self.class.raise_exceptions
         begin
@@ -105,6 +119,18 @@ module Twirp
 
 
   private
+
+    if defined?(ActiveSupport::Notifications)
+      def instrument(event_name, payload)
+        ActiveSupport::Notifications.instrument event_name, payload do
+          yield
+        end
+      end
+    else
+      def instrument(_event_name, _payload)
+        yield
+      end
+    end
 
     # Parse request and fill env with rpc data.
     # Returns a bad_route error if something went wrong.
@@ -176,7 +202,11 @@ module Twirp
     def success_response(output, env)
       begin
         env[:output] = output
-        @on_success.each{|hook| hook.call(env) }
+        @on_success.each do |hook|
+          instrument 'before.twirp', env: env, hook: hook do
+            hook.call(env)
+          end
+        end
 
         headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
         resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
@@ -189,7 +219,11 @@ module Twirp
 
     def error_response(twerr, env)
       begin
-        @on_error.each{|hook| hook.call(twerr, env) }
+        @on_error.each do |hook|
+          instrument 'error.twirp', env: env, hook: hook, twerr: twerr do
+            hook.call(twerr, env)
+          end
+        end
         self.class.error_response(twerr)
       rescue => e
         return exception_response(e, env)
@@ -200,7 +234,11 @@ module Twirp
       raise e if self.class.raise_exceptions
 
       begin
-        @exception_raised.each{|hook| hook.call(e, env) }
+        @exception_raised.each do |hook|
+          instrument 'exception_raised.twirp', env: env, hook: hook do
+            hook.call(e, env)
+          end
+        end
       rescue => hook_e
         e = hook_e
       end
