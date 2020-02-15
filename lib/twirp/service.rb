@@ -64,7 +64,7 @@ module Twirp
         result = nil
         catch do |return_error|
           payload = { rack_env: rack_env, env: env }
-          instrument  'route_request.twirp', payload do
+          instrument  'route.twirp', payload do
             result = route_request(rack_env, env)
           end
           throw(return_error) if result.is_a? Twirp::Error
@@ -203,7 +203,7 @@ module Twirp
       begin
         env[:output] = output
         @on_success.each do |hook|
-          instrument 'before.twirp', env: env, hook: hook do
+          instrument 'success.twirp', env: env, hook: hook do
             hook.call(env)
           end
         end
@@ -220,7 +220,7 @@ module Twirp
     def error_response(twerr, env)
       begin
         @on_error.each do |hook|
-          instrument 'error.twirp', env: env, hook: hook, twerr: twerr do
+          instrument 'error.twirp', env: env, hook: hook, twirp_error: twerr do
             hook.call(twerr, env)
           end
         end
@@ -235,7 +235,7 @@ module Twirp
 
       begin
         @exception_raised.each do |hook|
-          instrument 'exception_raised.twirp', env: env, hook: hook do
+          instrument 'exception.twirp', env: env, hook: hook do
             hook.call(e, env)
           end
         end
