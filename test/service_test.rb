@@ -145,10 +145,10 @@ class ServiceTest < Minitest::Test
       method: "POST", input: 'bad json', "CONTENT_TYPE" => "application/json"
     status, headers, body = haberdasher_service.call(rack_env)
 
-    assert_equal 404, status
+    assert_equal 400, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route',
+      "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json: ' +
                 "Error occurred during parsing: Parse error at 'bad json'",
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
@@ -160,10 +160,10 @@ class ServiceTest < Minitest::Test
       method: "POST", input: 'bad protobuf', "CONTENT_TYPE" => "application/protobuf"
     status, headers, body = haberdasher_service.call(rack_env)
 
-    assert_equal 404, status
+    assert_equal 400, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({
-      "code" => 'bad_route',
+      "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf: ' +
                 'Error occurred during parsing: Unexpected EOF inside skipped data',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
