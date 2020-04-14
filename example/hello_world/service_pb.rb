@@ -16,7 +16,7 @@ end
 
 module Example
   module HelloWorld
-    HelloRequest = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.hello_world.HelloRequest").msgclass
-    HelloResponse = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.hello_world.HelloResponse").msgclass
+    HelloRequest = ::Google::Protobuf::DescriptorPool.generated_pool.lookup("example.hello_world.HelloRequest").msgclass
+    HelloResponse = ::Google::Protobuf::DescriptorPool.generated_pool.lookup("example.hello_world.HelloResponse").msgclass
   end
 end

@@ -11,7 +11,7 @@ Features and bugfixes are managed through Github's Issues and Pull Requests. Con
  * Run Go tests (test code generation): `cd protoc-gen-twirp_ruby` then `go test ./...`
  * Run example code (see [example/README.md](example/README.md)).
 
-## Make a new release (for authors only)
+## Make a new release (authors only)
 
 Once enough new features are added, a new release is drafted.
 
@@ -19,9 +19,10 @@ Once enough new features are added, a new release is drafted.
  * Update VERSION with semantinc versioning in:
    * `lib/twirp/version.rb` and
    * `protoc-gen-twirp_ruby/version.go`
- * Update the example code with new features (if needed), and re-generate code (see [example/README.md](example/README.md)). Make sure that you are using the latest version of `protoc-gen-twirp_ruby`, if the repo is in `$GOPATH/src/github.com/twitchtv/twirp-ruby`, then you only need to do `go install github.com/twitchtv/twirp-ruby/protoc-gen-twirp_ruby` before running the `protoc` command to generate code. The generated code should be annotated with the new version.
  * Run `bundle install` to update the `Gemfile.lock` file with the new version.
- * Run tests.
+ * Run `rake` to run tests.
+ * Re-generate code (see [example/README.md](example/README.md)). Make sure to use the latest version of `protoc-gen-twirp_ruby`; if the repo is in `$GOPATH/src/github.com/twitchtv/twirp-ruby`, then you only need to do `go install github.com/twitchtv/twirp-ruby/protoc-gen-twirp_ruby` before running the `protoc` command to generate code. The generated code should be annotated with the new version.
+ * Update example code and README if needed with new features.
  * Commit changes for the new version in master and push to remote.
  * [Draft a new release](https://github.com/twitchtv/twirp-ruby/releases) in Github. Create a new tag with the version. Add release notes (see previous releases to keep the same format).
  * Build the gem: `gem build twirp.gemspec` and then push the new .gem file to Ruby Gems: `gem push twirp-X.X.X.gem`. You can delete the .gem file after that.
