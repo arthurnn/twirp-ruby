@@ -5,7 +5,7 @@ require_relative '../lib/twirp/error'
 class TestErrorCodes < Minitest::Test
 
   def test_error_codes
-    assert_equal 17, Twirp::ERROR_CODES.size
+    assert_equal 18, Twirp::ERROR_CODES.size
 
     # all codes should be symbols
     Twirp::ERROR_CODES.each do |code|
@@ -19,7 +19,7 @@ class TestErrorCodes < Minitest::Test
   end
 
   def test_codes_to_http_status
-    assert_equal 17, Twirp::ERROR_CODES_TO_HTTP_STATUS.size
+    assert_equal 18, Twirp::ERROR_CODES_TO_HTTP_STATUS.size
 
     assert_equal 404, Twirp::ERROR_CODES_TO_HTTP_STATUS[:not_found]
     assert_equal 500, Twirp::ERROR_CODES_TO_HTTP_STATUS[:internal]

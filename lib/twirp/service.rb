@@ -107,29 +107,30 @@ module Twirp
   private
 
     # Parse request and fill env with rpc data.
-    # Returns a bad_route error if something went wrong.
+    # Returns a bad_route error if could not be properly routed to a Twirp method.
+    # Returns a malformed error if could not decode the body (either bad JSON or bad Protobuf)
     def route_request(rack_env, env)
       rack_request = Rack::Request.new(rack_env)
 
       if rack_request.request_method != "POST"
-        return bad_route_error("HTTP request method must be POST", rack_request)
+        return route_err(:bad_route, "HTTP request method must be POST", rack_request)
       end
 
       content_type = rack_request.get_header("CONTENT_TYPE")
       if !Encoding.valid_content_type?(content_type)
-        return bad_route_error("Unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of #{Encoding.valid_content_types.inspect}", rack_request)
+        return route_err(:bad_route, "Unexpected Content-Type: #{content_type.inspect}. Content-Type header must be one of #{Encoding.valid_content_types.inspect}", rack_request)
       end
       env[:content_type] = content_type
 
       path_parts = rack_request.fullpath.split("/")
       if path_parts.size < 3 || path_parts[-2] != self.full_name
-        return bad_route_error("Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
+        return route_err(:bad_route, "Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
       end
       method_name = path_parts[-1]
 
       base_env = self.class.rpcs[method_name]
       if !base_env
-        return bad_route_error("Invalid rpc method #{method_name.inspect}", rack_request)
+        return route_err(:bad_route, "Invalid rpc method #{method_name.inspect}", rack_request)
       end
       env.merge!(base_env) # :rpc_method, :input_class, :output_class
 
@@ -141,7 +142,7 @@ module Twirp
         if e.is_a?(Google::Protobuf::ParseError)
           error_msg += ": #{e.message.strip}"
         end
-        return bad_route_error(error_msg, rack_request)
+        return route_err(:malformed, error_msg, rack_request)
       end
 
       env[:input] = input
@@ -149,10 +150,9 @@ module Twirp
       return
     end
 
-    def bad_route_error(msg, req)
-      Twirp::Error.bad_route msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
+    def route_err(code, msg, req)
+      Twirp::Error.new code, msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
     end
-
 
 
     # Call handler method and return a Protobuf Message or a Twirp::Error.
