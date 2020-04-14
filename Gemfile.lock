@@ -2,18 +2,18 @@ PATH
   remote: .
   specs:
     twirp (1.4.1)
-      faraday (~> 0)
+      faraday (< 2)
       google-protobuf (~> 3.0, >= 3.0.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    faraday (0.17.1)
+    faraday (1.0.1)
       multipart-post (>= 1.2, < 3)
-    google-protobuf (3.11.2)
-    minitest (5.11.3)
+    google-protobuf (3.11.4)
+    minitest (5.14.0)
     multipart-post (2.1.1)
-    rack (2.0.8)
+    rack (2.2.2)
     rake (13.0.1)
 
 PLATFORMS
