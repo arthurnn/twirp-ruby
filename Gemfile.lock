@@ -13,7 +13,7 @@ GEM
     google-protobuf (3.11.4)
     minitest (5.14.0)
     multipart-post (2.1.1)
-    rack (2.2.2)
+    rack (2.2.3)
     rake (13.0.1)
 
 PLATFORMS
