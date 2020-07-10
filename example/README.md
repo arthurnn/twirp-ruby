@@ -26,7 +26,7 @@ curl --request POST \
   --data '{"name": "World"}'
 ```
 
-To send requests from Ruby code, runt he hello_world client example:
+To send requests from Ruby code, run the hello_world client example:
 ```sh
 bundle exec ruby hello_world_client.rb
 ```
