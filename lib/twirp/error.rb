@@ -25,7 +25,7 @@ module Twirp
     already_exists:       409, # Conflict
     permission_denied:    403, # Forbidden
     unauthenticated:      401, # Unauthorized
-    resource_exhausted:   403, # Forbidden
+    resource_exhausted:   429, # Too Many Requests
     failed_precondition:  412, # Precondition Failed
     aborted:              409, # Conflict
     out_of_range:         400, # Bad Request
