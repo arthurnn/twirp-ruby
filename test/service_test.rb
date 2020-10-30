@@ -64,6 +64,15 @@ class ServiceTest < Minitest::Test
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
   end
 
+  def test_successful_json_request_emit_defaults
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 0 # default int value
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 200, status
+    assert_equal 'application/json', headers['Content-Type']
+    assert_equal({"inches" => 0, "color" => "white"}, JSON.parse(body[0]))
+  end
+
   def test_successful_proto_request
     rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 10)
     status, headers, body = haberdasher_service.call(rack_env)
