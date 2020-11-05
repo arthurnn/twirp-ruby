@@ -23,7 +23,7 @@ module Twirp
 
       def decode(bytes, msg_class, content_type)
         case content_type
-        when JSON  then msg_class.decode_json(bytes)
+        when JSON  then msg_class.decode_json(bytes, ignore_unknown_fields: true)
         when PROTO then msg_class.decode(bytes)
         else raise ArgumentError.new("Invalid content_type")
         end
