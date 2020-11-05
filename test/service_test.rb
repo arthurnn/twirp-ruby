@@ -179,6 +179,15 @@ class ServiceTest < Minitest::Test
     }, JSON.parse(body[0]))
   end
 
+  def test_json_request_ignores_unknown_fields
+    rack_env = json_req "/example.Haberdasher/MakeHat", inches: 10, fake: 3
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 200, status
+    assert_equal 'application/json', headers['Content-Type']
+    assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
+  end
+
   def test_bad_route_triggers_on_error_hooks
     svc = haberdasher_service
 
