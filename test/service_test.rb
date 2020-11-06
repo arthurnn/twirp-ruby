@@ -188,6 +188,20 @@ class ServiceTest < Minitest::Test
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
   end
 
+  def test_json_strict_request_fails_unknown_fields
+    rack_env = json_strict_req "/example.Haberdasher/MakeHat", inches: 10, fake: 3
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type']
+    assert_equal({
+      "code" => 'malformed',
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json; strict=true: ' +
+                "Error occurred during parsing: No such field: fake",
+      "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
+    }, JSON.parse(body[0]))
+  end
+
   def test_bad_route_triggers_on_error_hooks
     svc = haberdasher_service
 
@@ -807,6 +821,12 @@ class ServiceTest < Minitest::Test
     Rack::MockRequest.env_for path, method: "POST",
       input: JSON.generate(attrs),
       "CONTENT_TYPE" => "application/json"
+  end
+
+  def json_strict_req(path, attrs)
+    Rack::MockRequest.env_for path, method: "POST",
+      input: JSON.generate(attrs),
+      "CONTENT_TYPE" => "application/json; strict=true"
   end
 
   def proto_req(path, proto_message)

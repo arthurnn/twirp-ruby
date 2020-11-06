@@ -17,6 +17,10 @@ module Twirp
 
   module Encoding
     JSON = "application/json"
+    # An opt-in content type useful when curling or manually testing a twirp
+    # service.  This will fail if unknown fields are encountered. The return
+    # content type will be application/json.
+    JSON_STRICT = "application/json; strict=true"
     PROTO = "application/protobuf"
 
     class << self
@@ -24,6 +28,7 @@ module Twirp
       def decode(bytes, msg_class, content_type)
         case content_type
         when JSON  then msg_class.decode_json(bytes, ignore_unknown_fields: true)
+        when JSON_STRICT then msg_class.decode_json(bytes)
         when PROTO then msg_class.decode(bytes)
         else raise ArgumentError.new("Invalid content_type")
         end
@@ -32,6 +37,7 @@ module Twirp
       def encode(msg_obj, msg_class, content_type)
         case content_type
         when JSON  then msg_class.encode_json(msg_obj, emit_defaults: true)
+        when JSON_STRICT then msg_class.encode_json(msg_obj, emit_defaults: true)
         when PROTO then msg_class.encode(msg_obj)
         else raise ArgumentError.new("Invalid content_type")
         end
@@ -46,7 +52,7 @@ module Twirp
       end
 
       def valid_content_type?(content_type)
-        content_type == JSON || content_type == PROTO
+        content_type == JSON || content_type == PROTO || content_type == JSON_STRICT
       end
 
       def valid_content_types
