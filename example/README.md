@@ -22,28 +22,13 @@ Now you can send `curl` requests from another terminal window:
 ```sh
 curl --request POST \
   --url http://localhost:8080/twirp/example.hello_world.HelloWorld/Hello \
-  --header 'Content-Type: application/json' \
+  --header 'Content-Type: application/json; strict=true' \
   --data '{"name": "World"}'
 ```
 
 To send requests from Ruby code, run the hello_world client example:
 ```sh
 bundle exec ruby hello_world_client.rb
-```
-
-### Strict JSON Requests
-
-By default JSON requests ignore unknown fields to match the behavior of a
-traditional protocol buffer request.  In certain cases it can be convenient to
-have a request validated and fail if unknown fields are encountered --
-especially when doing testing using curl.  This can be done by specifying a
-strict flag as part of the content type.
-
-```sh
-curl --request POST \
-  --url http://localhost:8080/twirp/example.hello_world.HelloWorld/Hello \
-  --header 'Content-Type: application/json; strict=true' \
-  --data '{"name": "World", "unknown": "field will fail"}'
 ```
 
 ### Run code generation
