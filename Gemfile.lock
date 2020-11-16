@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    twirp (1.7.0)
+    twirp (1.7.1)
       faraday (< 2)
       google-protobuf (~> 3.0, >= 3.7.0)
 
@@ -11,7 +11,7 @@ GEM
     faraday (1.1.0)
       multipart-post (>= 1.2, < 3)
       ruby2_keywords
-    google-protobuf (3.13.0)
+    google-protobuf (3.14.0)
     minitest (5.14.0)
     multipart-post (2.1.1)
     rack (2.2.3)
