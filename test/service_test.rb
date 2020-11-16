@@ -65,12 +65,21 @@ class ServiceTest < Minitest::Test
   end
 
   def test_successful_json_request_emit_defaults
+    rack_env = json_strict_req "/example.Haberdasher/MakeHat", inches: 0 # default int value
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 200, status
+    assert_equal 'application/json; strict=true', headers['Content-Type']
+    assert_equal({"inches" => 0, "color" => "white"}, JSON.parse(body[0]))
+  end
+  
+  def test_successful_json_request_no_emit_defaults
     rack_env = json_req "/example.Haberdasher/MakeHat", inches: 0 # default int value
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
     assert_equal 'application/json', headers['Content-Type']
-    assert_equal({"inches" => 0, "color" => "white"}, JSON.parse(body[0]))
+    assert_equal({"color" => "white"}, JSON.parse(body[0]))
   end
 
   def test_successful_proto_request
@@ -186,6 +195,20 @@ class ServiceTest < Minitest::Test
     assert_equal 200, status
     assert_equal 'application/json', headers['Content-Type']
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
+  end
+
+  def test_json_strict_request_fails_unknown_fields
+    rack_env = json_strict_req "/example.Haberdasher/MakeHat", inches: 10, fake: 3
+    status, headers, body = haberdasher_service.call(rack_env)
+
+    assert_equal 400, status
+    assert_equal 'application/json', headers['Content-Type']
+    assert_equal({
+      "code" => 'malformed',
+      "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json; strict=true: ' +
+                "Error occurred during parsing: No such field: fake",
+      "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
+    }, JSON.parse(body[0]))
   end
 
   def test_bad_route_triggers_on_error_hooks
@@ -807,6 +830,12 @@ class ServiceTest < Minitest::Test
     Rack::MockRequest.env_for path, method: "POST",
       input: JSON.generate(attrs),
       "CONTENT_TYPE" => "application/json"
+  end
+
+  def json_strict_req(path, attrs)
+    Rack::MockRequest.env_for path, method: "POST",
+      input: JSON.generate(attrs),
+      "CONTENT_TYPE" => "application/json; strict=true"
   end
 
   def proto_req(path, proto_message)
