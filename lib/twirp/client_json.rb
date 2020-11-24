@@ -24,6 +24,7 @@ module Twirp
 
       package = opts[:package].to_s
       service = opts[:service].to_s
+      @strict = opts.fetch( :strict, false )
       raise ArgumentError.new("Missing option :service") if service.empty?
       @service_full_name = package.empty? ? service : "#{package}.#{service}"
     end
@@ -33,7 +34,8 @@ module Twirp
     def rpc(rpc_method, attrs={}, req_opts=nil)
       body = Encoding.encode_json(attrs)
 
-      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, Encoding::JSON, req_opts, body)
+      encoding = @strict ? Encoding::JSON_STRICT : Encoding::JSON
+      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, encoding, req_opts, body)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end
