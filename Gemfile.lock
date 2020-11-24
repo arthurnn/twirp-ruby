@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    twirp (1.7.1)
+    twirp (1.7.2)
       faraday (< 2)
       google-protobuf (~> 3.0, >= 3.7.0)
 
