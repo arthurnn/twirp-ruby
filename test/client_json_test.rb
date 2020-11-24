@@ -29,6 +29,20 @@ class ClientJSONTest < Minitest::Test
     assert_equal 3, resp.data["blah_resp"]
   end
 
+  def test_client_json_strict_encoding
+    c = Twirp::ClientJSON.new(conn_stub("/my.pkg.Talking/Blah") {|req|
+      assert_equal "application/json; strict=true", req.request_headers['Content-Type']
+      assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
+
+      [200, {}, '{"blah_resp": 3}']
+    }, package: "my.pkg", service: "Talking", strict: true)
+
+    resp = c.rpc :Blah, blah1: 1, blah2: 2
+    assert_nil resp.error
+    refute_nil resp.data
+    assert_equal 3, resp.data["blah_resp"]
+  end
+
   def test_client_json_error
     c = Twirp::ClientJSON.new(conn_stub("/Foo/Foomo") {|req|
       [400, {}, '{"code": "invalid_argument", "msg": "dont like empty"}']
