@@ -168,7 +168,7 @@ class ServiceTest < Minitest::Test
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json: ' +
-                "Error occurred during parsing: Parse error at 'bad json'",
+                "Error occurred during parsing: Error parsing JSON @1:0: Expected: '{'",
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
@@ -183,7 +183,7 @@ class ServiceTest < Minitest::Test
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf: ' +
-                'Error occurred during parsing: Unexpected EOF inside skipped data',
+                'Error occurred during parsing',
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
@@ -206,7 +206,7 @@ class ServiceTest < Minitest::Test
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json; strict=true: ' +
-                "Error occurred during parsing: No such field: fake",
+                "Error occurred during parsing: Error parsing JSON @1:20: No such field: fake",
       "meta" => {"twirp_invalid_route" => "POST /example.Haberdasher/MakeHat"},
     }, JSON.parse(body[0]))
   end
@@ -850,4 +850,3 @@ class ServiceTest < Minitest::Test
     end)
   end
 end
-
