@@ -136,7 +136,9 @@ module Twirp
 
       input = nil
       begin
-        input = Encoding.decode(rack_request.body.read, env[:input_class], content_type)
+        body_str = rack_request.body.read
+        rack_request.body.rewind # allow other middleware to read again (https://github.com/twitchtv/twirp-ruby/issues/50)
+        input = Encoding.decode(body_str, env[:input_class], content_type)
       rescue => e
         error_msg = "Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}"
         if e.is_a?(Google::Protobuf::ParseError)
