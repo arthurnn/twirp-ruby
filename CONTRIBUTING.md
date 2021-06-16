@@ -16,7 +16,7 @@ Features and bugfixes are managed through Github's Issues and Pull Requests. Con
 Once enough new features are added, a new release is drafted.
 
  * Merge approved PRs into master.
- * Update VERSION with semantinc versioning in:
+ * Update VERSION with semantic versioning in:
    * `lib/twirp/version.rb` and
    * `protoc-gen-twirp_ruby/version.go`
  * Run `bundle install` to update the `Gemfile.lock` file with the new version.
