@@ -160,6 +160,31 @@ module Twirp
       body = Encoding.encode(input, rpcdef[:input_class], content_type)
 
       resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, content_type, req_opts, body)
+
+      rpc_response_thennable(resp) do |resp|
+        rpc_response_to_clientresp(resp, content_type, rpcdef)
+      end
+    end
+
+    private
+
+    # Executes the post-processing on 'resp' in the provided block,
+    # either in a call to ".then { ... }" as a promise-like interface,
+    # or just execute it directly if the object doesn't support "then".
+    # On Ruby 2.6+ all objects have ".then", but they behave the same as
+    # a promise-like object, so this behaves identically.
+    #
+    # This allows extensions of Faraday that return promises to work
+    # natively with twirp-ruby. For normal Faraday, this is a noop.
+    def rpc_response_thennable(resp)
+      return yield resp unless resp.respond_to?(:then)
+      
+      resp.then do |resp|
+        yield resp
+      end
+    end
+
+    def rpc_response_to_clientresp(resp, content_type, rpcdef)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end

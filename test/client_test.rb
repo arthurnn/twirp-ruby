@@ -72,6 +72,16 @@ class ClientTest < Minitest::Test
     assert_equal "red", resp.data.color
   end
 
+  def test_proto_thennable
+    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.Haberdasher/MakeHat") {|req|
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
   def test_proto_send_headers
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       assert_equal "Bar", req.request_headers['My-Foo-Header']
@@ -187,6 +197,17 @@ class ClientTest < Minitest::Test
 
   def test_json_success
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+
+    resp = c.make_hat({})
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_json_thennable
+    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.Haberdasher/MakeHat") {|req|
       [200, jsonheader, '{"inches": 99, "color": "red"}']
     }, content_type: "application/json")
 
@@ -335,6 +356,29 @@ class ClientTest < Minitest::Test
         end
       end
     end
+  end
+
+  # mock of a promise-like thennable, allowing a call to ".then" to get the real object
+  class Thennable
+    def initialize(obj)
+      @obj = obj
+    end
+
+    def then(&block)
+      block.call(@obj)
+    end
+  end
+
+  module ThennableFaraday
+    def post(*)
+      Thennable.new(super)
+    end
+  end
+
+  def conn_stub_thennable(path, &block)
+    s = conn_stub(path, &block)
+    s.extend(ThennableFaraday)
+    s
   end
 
 end

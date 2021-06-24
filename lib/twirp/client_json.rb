@@ -36,6 +36,15 @@ module Twirp
 
       encoding = @strict ? Encoding::JSON_STRICT : Encoding::JSON
       resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, encoding, req_opts, body)
+
+      rpc_response_thennable(resp) do |resp|
+        rpc_response_to_clientresp(resp)
+      end
+    end
+
+    private
+
+    def rpc_response_to_clientresp(resp)
       if resp.status != 200
         return ClientResp.new(nil, self.class.error_from_response(resp))
       end

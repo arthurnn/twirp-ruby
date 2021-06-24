@@ -29,6 +29,20 @@ class ClientJSONTest < Minitest::Test
     assert_equal 3, resp.data["blah_resp"]
   end
 
+  def test_client_json_thennable
+    c = Twirp::ClientJSON.new(conn_stub_thennable("/my.pkg.Talking/Blah") {|req|
+      assert_equal "application/json", req.request_headers['Content-Type']
+      assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
+
+      [200, {}, '{"blah_resp": 3}']
+    }, package: "my.pkg", service: "Talking")
+
+    resp = c.rpc :Blah, blah1: 1, blah2: 2
+    assert_nil resp.error
+    refute_nil resp.data
+    assert_equal 3, resp.data["blah_resp"]
+  end
+
   def test_client_json_strict_encoding
     c = Twirp::ClientJSON.new(conn_stub("/my.pkg.Talking/Blah") {|req|
       assert_equal "application/json; strict=true", req.request_headers['Content-Type']
@@ -75,6 +89,29 @@ class ClientJSONTest < Minitest::Test
         end
       end
     end
+  end
+
+  # mock of a promise-like thennable, allowing a call to ".then" to get the real object
+  class Thennable
+    def initialize(obj)
+      @obj = obj
+    end
+
+    def then(&block)
+      block.call(@obj)
+    end
+  end
+
+  module ThennableFaraday
+    def post(*)
+      Thennable.new(super)
+    end
+  end
+
+  def conn_stub_thennable(path, &block)
+    s = conn_stub(path, &block)
+    s.extend(ThennableFaraday)
+    s
   end
 
  end
