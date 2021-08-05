@@ -37,7 +37,17 @@ class ClientJSONTest < Minitest::Test
       [200, {}, '{"blah_resp": 3}']
     }, package: "my.pkg", service: "Talking")
 
-    resp = c.rpc :Blah, blah1: 1, blah2: 2
+    resp_thennable = c.rpc :Blah, blah1: 1, blah2: 2
+    # the final `.then {}` call will yield a ClientResp
+    assert resp_thennable.is_a?(Thennable)
+    resp = resp_thennable.value
+    assert resp.is_a?(Twirp::ClientResp)
+
+    # the final Thennable will have come from one with a faraday response
+    assert resp_thennable.parent.is_a?(Thennable)
+    assert resp_thennable.parent.value.is_a?(Faraday::Response)
+
+    # the final ClientResp should look the same as when then isn't used
     assert_nil resp.error
     refute_nil resp.data
     assert_equal 3, resp.data["blah_resp"]
@@ -91,14 +101,18 @@ class ClientJSONTest < Minitest::Test
     end
   end
 
-  # mock of a promise-like thennable, allowing a call to ".then" to get the real object
+  # mock of a promise-like thennable, allowing a call to ".then" to get the real value
   class Thennable
-    def initialize(obj)
-      @obj = obj
+    attr_reader :value, :parent
+
+    def initialize(value, parent = nil)
+      @value = value
+      @parent = parent
     end
 
     def then(&block)
-      block.call(@obj)
+      # similar to a promise, but runs immediately
+      Thennable.new(block.call(@value), self)
     end
   end
 

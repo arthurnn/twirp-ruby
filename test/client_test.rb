@@ -76,7 +76,18 @@ class ClientTest < Minitest::Test
     c = Example::HaberdasherClient.new(conn_stub_thennable("/example.Haberdasher/MakeHat") {|req|
       [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
     })
-    resp = c.make_hat({})
+    resp_thennable = c.make_hat({})
+
+    # the final `.then {}` call will yield a ClientResp
+    assert resp_thennable.is_a?(Thennable)
+    resp = resp_thennable.value
+    assert resp.is_a?(Twirp::ClientResp)
+
+    # the final Thennable will have come from one with a faraday response
+    assert resp_thennable.parent.is_a?(Thennable)
+    assert resp_thennable.parent.value.is_a?(Faraday::Response)
+
+    # the final ClientResp should look the same as when then isn't used
     assert_nil resp.error
     assert_equal 99, resp.data.inches
     assert_equal "red", resp.data.color
@@ -211,7 +222,17 @@ class ClientTest < Minitest::Test
       [200, jsonheader, '{"inches": 99, "color": "red"}']
     }, content_type: "application/json")
 
-    resp = c.make_hat({})
+    resp_thennable = c.make_hat({})
+    # the final `.then {}` call will yield a ClientResp
+    assert resp_thennable.is_a?(Thennable)
+    resp = resp_thennable.value
+    assert resp.is_a?(Twirp::ClientResp)
+
+    # the final Thennable will have come from one with a faraday response
+    assert resp_thennable.parent.is_a?(Thennable)
+    assert resp_thennable.parent.value.is_a?(Faraday::Response)
+
+    # the final ClientResp should look the same as when then isn't used
     assert_nil resp.error
     assert_equal 99, resp.data.inches
     assert_equal "red", resp.data.color
@@ -358,14 +379,18 @@ class ClientTest < Minitest::Test
     end
   end
 
-  # mock of a promise-like thennable, allowing a call to ".then" to get the real object
+  # mock of a promise-like thennable, allowing a call to ".then" to get the real value
   class Thennable
-    def initialize(obj)
-      @obj = obj
+    attr_reader :value, :parent
+
+    def initialize(value, parent = nil)
+      @value = value
+      @parent = parent
     end
 
     def then(&block)
-      block.call(@obj)
+      # similar to a promise, but runs immediately
+      Thennable.new(block.call(@value), self)
     end
   end
 
