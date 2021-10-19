@@ -17,7 +17,7 @@ class ClientTest < Minitest::Test
 
   def test_new_with_invalid_url
     assert_raises URI::InvalidURIError do
-      EmptyClient.new("lulz")
+      EmptyClient.new("invalid uri with unescaped spaces")
     end
   end
 
