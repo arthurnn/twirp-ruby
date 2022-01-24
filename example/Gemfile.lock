@@ -13,7 +13,7 @@ GEM
       multipart-post (>= 1.2, < 3)
       ruby2_keywords
     faraday-net_http (1.0.1)
-    google-protobuf (3.15.8)
+    google-protobuf (3.19.2)
     multipart-post (2.1.1)
     rack (2.2.3)
     ruby2_keywords (0.0.4)
