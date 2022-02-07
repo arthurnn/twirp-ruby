@@ -122,7 +122,7 @@ module Twirp
       end
       env[:content_type] = content_type
 
-      path_parts = rack_request.fullpath.split("/")
+      path_parts = rack_request.path.split("/")
       if path_parts.size < 3 || path_parts[-2] != self.full_name
         return route_err(:bad_route, "Invalid route. Expected format: POST {BaseURL}/#{self.full_name}/{Method}", rack_request)
       end
@@ -153,7 +153,7 @@ module Twirp
     end
 
     def route_err(code, msg, req)
-      Twirp::Error.new code, msg, twirp_invalid_route: "#{req.request_method} #{req.fullpath}"
+      Twirp::Error.new code, msg, twirp_invalid_route: "#{req.request_method} #{req.path}"
     end
 
 
