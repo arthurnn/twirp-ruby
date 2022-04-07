@@ -24,9 +24,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
-	plugin "github.com/golang/protobuf/protoc-gen-go/plugin"
+	"google.golang.org/protobuf/proto"
+	descriptor "google.golang.org/protobuf/types/descriptorpb"
+	plugin "google.golang.org/protobuf/types/pluginpb"
 
 	"github.com/twitchtv/twirp-ruby/internal/gen/typemap"
 )
@@ -66,6 +66,7 @@ func fileDescSliceContains(slice []*descriptor.FileDescriptorProto, f *descripto
 
 func (g *generator) Generate() *plugin.CodeGeneratorResponse {
 	resp := new(plugin.CodeGeneratorResponse)
+	resp.SupportedFeatures = proto.Uint64(uint64(plugin.CodeGeneratorResponse_FEATURE_PROTO3_OPTIONAL))
 	g.findProtoFilesToGenerate()
 
 	for _, f := range g.genFiles {
