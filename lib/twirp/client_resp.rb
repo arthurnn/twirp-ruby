@@ -15,9 +15,11 @@ module Twirp
   class ClientResp
     attr_accessor :data
     attr_accessor :error
+    attr_reader   :json
 
-    def initialize(data, error)
+    def initialize(data, json, error)
       @data = data
+      @json = json
       @error = error
     end
   end

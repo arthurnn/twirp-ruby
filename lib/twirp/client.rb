@@ -194,7 +194,7 @@ module Twirp
       end
 
       data = Encoding.decode(resp.body, rpcdef[:output_class], content_type)
-      return ClientResp.new(data, nil)
+      return ClientResp.new(data, resp.body, nil)
     end
 
   end
