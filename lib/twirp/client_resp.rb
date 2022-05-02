@@ -14,11 +14,13 @@
 module Twirp
   class ClientResp
     attr_accessor :data
+    attr_accessor :body
     attr_accessor :error
 
-    def initialize(data, error)
+    def initialize(data: nil, body: nil, error: nil)
       @data = data
       @error = error
+      @body = body
     end
   end
 end
