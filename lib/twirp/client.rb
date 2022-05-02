@@ -151,7 +151,7 @@ module Twirp
     def rpc(rpc_method, input, req_opts=nil)
       rpcdef = self.class.rpcs[rpc_method.to_s]
       if !rpcdef
-        return ClientResp.new(nil, Twirp::Error.bad_route("rpc not defined on this client"))
+        return ClientResp.new(error: Twirp::Error.bad_route("rpc not defined on this client"))
       end
 
       content_type = (req_opts && req_opts[:headers] && req_opts[:headers]['Content-Type']) || @content_type
@@ -186,15 +186,15 @@ module Twirp
 
     def rpc_response_to_clientresp(resp, content_type, rpcdef)
       if resp.status != 200
-        return ClientResp.new(nil, self.class.error_from_response(resp))
+        return ClientResp.new(error: self.class.error_from_response(resp))
       end
 
       if resp.headers['Content-Type'] != content_type
-        return ClientResp.new(nil, Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
+        return ClientResp.new(error: Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
       end
 
       data = Encoding.decode(resp.body, rpcdef[:output_class], content_type)
-      return ClientResp.new(data, nil)
+      return ClientResp.new(data: data, body: resp.body)
     end
 
   end
