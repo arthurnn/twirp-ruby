@@ -1,5 +1,7 @@
 # Twirp-Ruby
 
+[![Run Tests](https://github.com/twitchtv/twirp-ruby/actions/workflows/tests.yml/badge.svg)](https://github.com/twitchtv/twirp-ruby/actions/workflows/tests.yml)
+
 [Twirp is a protocol](https://twitchtv.github.io/twirp/docs/spec_v5.html) for routing and serialization of services defined in a [.proto file](https://developers.google.com/protocol-buffers/docs/proto3), allowing easy implementation of RPC services with auto-generated clients in different languages.
 
 The [canonical implementation](https://github.com/twitchtv/twirp) is in Golang. The Twirp-Ruby project is the official implementation in Ruby for both server and clients.
