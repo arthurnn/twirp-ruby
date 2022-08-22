@@ -109,7 +109,12 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 	for i, service := range file.Service {
 		svcName := service.GetName()
 
-		print(b, "%sclass %sService < ::Twirp::Service", indent, camelCase(svcName))
+		// Well-named services already end in "Service"; fixup services that don't.
+		if !strings.HasSuffix(svcName, "Service") {
+			svcName += "Service"
+		}
+
+		print(b, "%sclass %s < ::Twirp::Service", indent, camelCase(svcName))
 		if pkgName != "" {
 			print(b, "%s  package '%s'", indent, pkgName)
 		}
@@ -125,7 +130,7 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 		print(b, "")
 
 		print(b, "%sclass %sClient < ::Twirp::Client", indent, camelCase(svcName))
-		print(b, "%s  client_for %sService", indent, camelCase(svcName))
+		print(b, "%s  client_for %s", indent, camelCase(svcName))
 		print(b, "%send", indent)
 		if i < len(file.Service)-1 {
 			print(b, "")
