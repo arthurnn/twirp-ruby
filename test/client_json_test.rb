@@ -16,12 +16,12 @@ class ClientJSONTest < Minitest::Test
   end
 
   def test_client_json_success
-    c = Twirp::ClientJSON.new(conn_stub("/my.pkg.Talking/Blah") {|req|
+    c = Twirp::ClientJSON.new(conn_stub("/my.pkg.TalkingService/Blah") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
       assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
 
       [200, {}, '{"blah_resp": 3}']
-    }, package: "my.pkg", service: "Talking")
+    }, package: "my.pkg", service: "TalkingService")
 
     resp = c.rpc :Blah, blah1: 1, blah2: 2
     assert_nil resp.error
@@ -30,12 +30,12 @@ class ClientJSONTest < Minitest::Test
   end
 
   def test_client_json_thennable
-    c = Twirp::ClientJSON.new(conn_stub_thennable("/my.pkg.Talking/Blah") {|req|
+    c = Twirp::ClientJSON.new(conn_stub_thennable("/my.pkg.TalkingService/Blah") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
       assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
 
       [200, {}, '{"blah_resp": 3}']
-    }, package: "my.pkg", service: "Talking")
+    }, package: "my.pkg", service: "TalkingService")
 
     resp_thennable = c.rpc :Blah, blah1: 1, blah2: 2
     # the final `.then {}` call will yield a ClientResp
@@ -54,12 +54,12 @@ class ClientJSONTest < Minitest::Test
   end
 
   def test_client_json_strict_encoding
-    c = Twirp::ClientJSON.new(conn_stub("/my.pkg.Talking/Blah") {|req|
+    c = Twirp::ClientJSON.new(conn_stub("/my.pkg.TalkingService/Blah") {|req|
       assert_equal "application/json; strict=true", req.request_headers['Content-Type']
       assert_equal '{"blah1":1,"blah2":2}', req.body # body is json
 
       [200, {}, '{"blah_resp": 3}']
-    }, package: "my.pkg", service: "Talking", strict: true)
+    }, package: "my.pkg", service: "TalkingService", strict: true)
 
     resp = c.rpc :Blah, blah1: 1, blah2: 2
     assert_nil resp.error
