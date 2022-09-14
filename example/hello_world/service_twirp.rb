@@ -10,7 +10,7 @@ module Example
       rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
     end
 
-    class HelloWorldServiceClient < ::Twirp::Client
+    class HelloWorldClient < ::Twirp::Client
       client_for HelloWorldService
     end
   end

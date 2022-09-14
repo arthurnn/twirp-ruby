@@ -32,7 +32,7 @@ module Example
     rpc :MakeHat, Size, Hat, :ruby_method => :make_hat
   end
 
-  class HaberdasherServiceClient < Twirp::Client
+  class HaberdasherClient < Twirp::Client
     client_for HaberdasherService
   end
 end
@@ -52,7 +52,7 @@ end
 # Twirp Service with no package and no rpc methods.
 class EmptyService < Twirp::Service
 end
-class EmptyServiceClient < Twirp::Client
+class EmptyClient < Twirp::Client
   client_for EmptyService
 end
 
@@ -65,7 +65,7 @@ end
 Foo = Google::Protobuf::DescriptorPool.generated_pool.lookup("Foo").msgclass
 
 # Foo Service Client
-class FooServiceClient < Twirp::Client
+class FooClient < Twirp::Client
   service "FooService"
   rpc :Foo, Foo, Foo, :ruby_method => :foo
 end
