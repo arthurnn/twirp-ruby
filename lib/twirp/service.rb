@@ -14,6 +14,7 @@
 require_relative 'encoding'
 require_relative 'error'
 require_relative 'service_dsl'
+require 'rack/request'
 
 module Twirp
 
