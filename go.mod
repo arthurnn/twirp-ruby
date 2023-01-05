@@ -1,4 +1,4 @@
-module github.com/github/twirp-ruby/v2
+module github.com/github/twirp-ruby
 
 go 1.17
 
@@ -14,4 +14,4 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
 
-// retract v7.1.2+incompatible
+retract v7.1.2+incompatible

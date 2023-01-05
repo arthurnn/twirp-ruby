@@ -12,5 +12,5 @@
 # permissions and limitations under the License.
 
 module Twirp
-  VERSION = "2.0.0"
+  VERSION = "1.10.0"
 end
