@@ -1,20 +1,21 @@
 PATH
   remote: ..
   specs:
-    twirp (1.7.2)
+    twirp (2.0.0)
       faraday (< 3)
       google-protobuf (~> 3.0, >= 3.7.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    faraday (2.6.0)
+    faraday (2.7.2)
       faraday-net_http (>= 2.0, < 3.1)
       ruby2_keywords (>= 0.0.4)
-    faraday-net_http (3.0.1)
-    google-protobuf (3.21.7)
+    faraday-net_http (3.0.2)
+    google-protobuf (3.21.12)
     rack (2.2.3.1)
     ruby2_keywords (0.0.5)
+    webrick (1.7.0)
 
 PLATFORMS
   ruby
@@ -22,6 +23,7 @@ PLATFORMS
 DEPENDENCIES
   rack
   twirp!
+  webrick
 
 BUNDLED WITH
-   1.17.3
+   2.4.2
