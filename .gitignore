@@ -1,5 +1,8 @@
-vendor/ruby/
+
 
 *.gem
 
 /Gemfile.lock
+
+vendor/ruby
+example/vendor
