@@ -1,4 +1,4 @@
-module github.com/github/twirp-ruby
+module github.com/github/twirp-ruby/v2
 
 go 1.17
 
