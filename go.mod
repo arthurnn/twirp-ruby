@@ -1,4 +1,4 @@
-module github.com/twitchtv/twirp-ruby
+module github.com/github/twirp-ruby
 
 go 1.17
 
