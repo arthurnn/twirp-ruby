@@ -26,14 +26,14 @@ end
 # Twirp Service.
 # An example of the result of the protoc twirp_ruby plugin code generator.
 module Example
-  class HaberdasherService < Twirp::Service
+  class Haberdasher < Twirp::Service
     package "example"
-    service "HaberdasherService"
+    service "Haberdasher"
     rpc :MakeHat, Size, Hat, :ruby_method => :make_hat
   end
 
   class HaberdasherClient < Twirp::Client
-    client_for HaberdasherService
+    client_for Haberdasher
   end
 end
 
@@ -53,7 +53,6 @@ end
 class EmptyService < Twirp::Service
 end
 class EmptyClient < Twirp::Client
-  client_for EmptyService
 end
 
 # Foo message
@@ -64,8 +63,8 @@ Google::Protobuf::DescriptorPool.generated_pool.build do
 end
 Foo = Google::Protobuf::DescriptorPool.generated_pool.lookup("Foo").msgclass
 
-# Foo Service Client
+# Foo Client
 class FooClient < Twirp::Client
-  service "FooService"
+  service "Foo"
   rpc :Foo, Foo, Foo, :ruby_method => :foo
 end
