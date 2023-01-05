@@ -6,7 +6,7 @@ module Example
   module HelloWorld
     class HelloWorldService < ::Twirp::Service
       package 'example.hello_world'
-      service 'HelloWorld'
+      service 'HelloWorldService'
       rpc :Hello, HelloRequest, HelloResponse, :ruby_method => :hello
     end
 

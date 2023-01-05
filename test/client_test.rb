@@ -12,7 +12,7 @@ class ClientTest < Minitest::Test
     c = EmptyClient.new("http://localhost:8080")
     refute_nil c
     refute_nil c.instance_variable_get(:@conn) # make sure that connection was assigned
-    assert_equal "EmptyClient", c.instance_variable_get(:@service_full_name)
+    assert_equal "EmptyService", c.instance_variable_get(:@service_full_name)
   end
 
   def test_new_with_invalid_url
@@ -31,13 +31,13 @@ class ClientTest < Minitest::Test
     # To avoid collisions, the Twirp::Client class should only have the rpc method.
     assert_equal [:rpc], Twirp::Client.instance_methods(false)
 
-    # If one of the methods is being implemented through the DSL, the colision should be avoided, keeping the previous method.
+    # If one of the methods is being implemented through the DSL, the collision should be avoided, keeping the previous method.
     num_mthds = EmptyClient.instance_methods.size
     EmptyClient.rpc :Rpc, Example::Empty, Example::Empty, :ruby_method => :rpc
     assert_equal num_mthds, EmptyClient.instance_methods.size # no new method was added (is a collision)
 
     # Make sure that the previous .rpc method was not modified
-    c = EmptyClient.new(conn_stub("/EmptyClient/Rpc") {|req|
+    c = EmptyClient.new(conn_stub("/EmptyService/Rpc") {|req|
       [200, protoheader, proto(Example::Empty, {})]
     })
     resp = c.rpc(:Rpc, {})
@@ -63,7 +63,7 @@ class ClientTest < Minitest::Test
   # ----------------------------
 
   def test_proto_success
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
     })
     resp = c.make_hat({})
@@ -73,7 +73,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_thennable
-    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.HaberdasherService/MakeHat") {|req|
       [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
     })
     resp_thennable = c.make_hat({})
@@ -94,7 +94,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_send_headers
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       assert_equal "Bar", req.request_headers['My-Foo-Header']
       [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
     })
@@ -105,7 +105,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_serialized_request_body_attrs
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       size = Example::Size.decode(req.body) # body is valid protobuf
       assert_equal 666, size.inches
 
@@ -117,7 +117,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_serialized_request_body
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       assert_equal "application/protobuf", req.request_headers['Content-Type']
 
       size = Example::Size.decode(req.body) # body is valid protobuf
@@ -131,7 +131,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_twirp_error
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [500, {}, json(code: "internal", msg: "something went wrong")]
     })
     resp = c.make_hat(inches: 1)
@@ -142,7 +142,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_intermediary_plain_error
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [503, {}, 'plain text error from proxy']
     })
     resp = c.make_hat(inches: 1)
@@ -156,7 +156,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_redirect_error
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [300, {'location' => "http://rainbow.com"}, '']
     })
     resp = c.make_hat(inches: 1)
@@ -169,7 +169,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_proto_missing_response_header
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [200, {}, proto(Example::Hat, inches: 99, color: "red")]
     })
     resp = c.make_hat({})
@@ -179,7 +179,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_error_with_invalid_code
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [500, {}, json(code: "unicorn", msg: "the unicorn is here")]
     })
     resp = c.make_hat({})
@@ -190,7 +190,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_error_with_no_code
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [500, {}, json(msg: "I have no code of honor")]
     })
     resp = c.make_hat({})
@@ -207,7 +207,7 @@ class ClientTest < Minitest::Test
   # ------------------------
 
   def test_json_success
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [200, jsonheader, '{"inches": 99, "color": "red"}']
     }, content_type: "application/json")
 
@@ -218,7 +218,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_thennable
-    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub_thennable("/example.HaberdasherService/MakeHat") {|req|
       [200, jsonheader, '{"inches": 99, "color": "red"}']
     }, content_type: "application/json")
 
@@ -239,7 +239,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_send_headers
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       assert_equal "Bar", req.request_headers['My-Foo-Header']
       [200, jsonheader, '{"inches": 99, "color": "red"}']
     }, content_type: "application/json")
@@ -250,7 +250,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_serialized_request_body_attrs
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
@@ -262,7 +262,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_serialized_request_body_object
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       assert_equal "application/json", req.request_headers['Content-Type']
       assert_equal '{"inches":666}', req.body # body is valid json
       [200, jsonheader, '{}']
@@ -274,7 +274,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_error
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [500, {}, json(code: "internal", msg: "something went wrong")]
     }, content_type: "application/json")
 
@@ -286,7 +286,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_json_missing_response_header
-    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+    c = Example::HaberdasherClient.new(conn_stub("/example.HaberdasherService/MakeHat") {|req|
       [200, {}, json(inches: 99, color: "red")]
     }, content_type: "application/json")
 
@@ -301,7 +301,7 @@ class ClientTest < Minitest::Test
   # ------------------
 
   def test_rpc_success
-    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
+    c = FooClient.new(conn_stub("/FooService/Foo") {|req|
       [200, protoheader, proto(Foo, foo: "out")]
     })
     resp = c.rpc :Foo, foo: "in"
@@ -311,7 +311,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_rpc_send_headers
-    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
+    c = FooClient.new(conn_stub("/FooService/Foo") {|req|
       assert_equal "Bar", req.request_headers['My-Foo-Header']
       [200, protoheader, proto(Foo, foo: "out")]
     })
@@ -322,7 +322,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_rpc_error
-    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
+    c = FooClient.new(conn_stub("/FooService/Foo") {|req|
       [400, {}, json(code: "invalid_argument", msg: "dont like empty")]
     })
     resp = c.rpc :Foo, foo: ""
@@ -333,7 +333,7 @@ class ClientTest < Minitest::Test
   end
 
   def test_rpc_serialization_exception
-    c = FooClient.new(conn_stub("/Foo/Foo") {|req|
+    c = FooClient.new(conn_stub("/FooService/Foo") {|req|
       [200, protoheader, "badstuff"]
     })
     assert_raises Google::Protobuf::ParseError do
