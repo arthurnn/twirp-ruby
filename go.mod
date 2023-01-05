@@ -14,4 +14,4 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 )
 
-retract v7.1.2+incompatible
+// retract v7.1.2+incompatible
