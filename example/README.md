@@ -39,7 +39,7 @@ Make sure you have the [protobuf compiler](https://github.com/golang/protobuf) (
 
 Install the twirp plugin with go:
 ```sh
-go get -u github.com/twitchtv/twirp-ruby/protoc-gen-twirp_ruby
+go get -u github.com/github/twirp-ruby/protoc-gen-twirp_ruby
 ```
 
 From the `/example` folder, run the generator command:

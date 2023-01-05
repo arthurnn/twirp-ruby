@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.email         = ["forbescyrus@gmail.com", "tothemario@gmail.com"]
   spec.summary       = %q{Twirp services in Ruby.}
   spec.description   = %q{Twirp is a simple RPC framework with protobuf service definitions. The Twirp gem provides native support for Ruby.}
-  spec.homepage      = "https://github.com/twitchtv/twirp-ruby"
+  spec.homepage      = "https://github.com/github/twirp-ruby"
   spec.license       = "MIT"
 
   spec.files         = Dir['lib/**/*'] + %w(Gemfile LICENSE README.md twirp.gemspec)
