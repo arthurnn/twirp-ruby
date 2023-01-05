@@ -23,10 +23,6 @@ To auto-generate Ruby code from a proto file, use the `protoc` plugin and the `-
 
 [On the CONTRIBUTING file](CONTRIBUTING.md).
 
-### Version 1 to 2
+### Releases and changes
 
-The upgrade should be mostly compatible.
-The biggest change is that version 2 now allows Faraday 2.x as the http client.
-
-For more information on the changes, see [changeset](https://github.com/github/twirp-ruby/compare/v1.9.0...v2.0.0).
-
+See the [releases](https://github.com/github/twirp-ruby/releases) page for latest information about released versions.
