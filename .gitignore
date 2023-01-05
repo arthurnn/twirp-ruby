@@ -1,3 +1,5 @@
+vendor/ruby/
+
 *.gem
 
 /Gemfile.lock
