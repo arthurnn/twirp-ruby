@@ -131,7 +131,10 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 		print(b, "%send", indent)
 		print(b, "")
 
-		print(b, "%sclass %sClient < ::Twirp::Client", indent, camelCase(svcName))
+		// Strip the "Service" suffix if present for better readability.
+		clientClassName := strings.TrimSuffix(svcName, "Service") + "Client"
+
+		print(b, "%sclass %s < ::Twirp::Client", indent, camelCase(clientClassName))
 		print(b, "%s  client_for %s", indent, camelCase(svcClassName))
 		print(b, "%send", indent)
 		if i < len(file.Service)-1 {
