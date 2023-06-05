@@ -99,6 +99,11 @@ module Twirp
       to_s
     end
 
+    # Used in pattern matching
+    def deconstruct_keys(_keys)
+      to_h
+    end
+
 
   private
 

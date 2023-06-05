@@ -96,5 +96,13 @@ class TestTwirpError < Minitest::Test
     err = Twirp::Error.new(:internal, "err msg")
     assert_equal({code: :internal, msg: "err msg"}, err.to_h)
   end
+
+  def test_pattern_matching
+    err = Twirp::Error.new(:internal, "err msg", "key" => "val")
+    assert({code: :internal, msg: "err msg", meta: {"key" => "val"}} in err)
+
+    err = Twirp::Error.new(:internal, "err msg")
+    assert({code: :internal, msg: "err msg"} in err)
+  end
 end
 
