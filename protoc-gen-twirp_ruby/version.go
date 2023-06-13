@@ -13,6 +13,4 @@
 
 package main
 
-// Version is the same version in the ruby gem: lib/twirp/version.rb
-// It helps identify what version of the code generator was used.
 const Version = "1.11.0"
