@@ -104,6 +104,44 @@ class ClientTest < Minitest::Test
     assert_equal "red", resp.data.color
   end
 
+  def test_proto_set_request_timeout_with_valid_value
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal 5, req.request.timeout
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({}, timeout: 5)
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_proto_set_request_timeout_with_invalid_value
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_nil req.request.timeout
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    resp = c.make_hat({}, timeout: -99)
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+
+    resp = c.make_hat({}, timeout: "not an integer")
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_proto_exceeds_request_timeout
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal 1, req.request.timeout
+      sleep(2)
+      [200, protoheader, proto(Example::Hat, inches: 99, color: "red")]
+    })
+    assert_raises Faraday::TimeoutError do
+      resp = c.make_hat({}, timeout: 1)
+    end
+  end
+
   def test_proto_serialized_request_body_attrs
     c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
       size = Example::Size.decode(req.body) # body is valid protobuf
@@ -247,6 +285,44 @@ class ClientTest < Minitest::Test
     assert_nil resp.error
     assert_equal 99, resp.data.inches
     assert_equal "red", resp.data.color
+  end
+
+  def test_proto_set_request_timeout_with_valid_value
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal 5, req.request.timeout
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+    resp = c.make_hat({}, timeout: 5)
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_proto_set_request_timeout_with_invalid_value
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_nil req.request.timeout
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+    resp = c.make_hat({}, timeout: -99)
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+
+    resp = c.make_hat({}, timeout: "not an integer")
+    assert_nil resp.error
+    assert_equal 99, resp.data.inches
+    assert_equal "red", resp.data.color
+  end
+
+  def test_proto_exceeds_request_timeout
+    c = Example::HaberdasherClient.new(conn_stub("/example.Haberdasher/MakeHat") {|req|
+      assert_equal 1, req.request.timeout
+      sleep(2)
+      [200, jsonheader, '{"inches": 99, "color": "red"}']
+    }, content_type: "application/json")
+    assert_raises Faraday::TimeoutError do
+      resp = c.make_hat({}, timeout: 1)
+    end
   end
 
   def test_json_serialized_request_body_attrs
