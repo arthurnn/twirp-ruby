@@ -3,6 +3,7 @@
 *.gem
 
 /Gemfile.lock
+/gemfiles/*.lock
 
 vendor/ruby
 example/vendor
