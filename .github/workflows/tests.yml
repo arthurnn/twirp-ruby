@@ -10,6 +10,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    name: Ruby ${{ matrix.ruby_version }} with ${{ matrix.gemfile }}
+
+    env:
+      BUNDLE_GEMFILE: gemfiles/${{ matrix.gemfile }}.gemfile
+
     strategy:
       matrix:
         ruby_version:
@@ -17,9 +22,13 @@ jobs:
           - "3.0"
           - "3.1"
           - "head"
+        gemfile:
+          - "faraday-0"
+          - "faraday-1"
+          - "faraday-2"
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
