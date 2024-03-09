@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func loadTestPb(t *testing.T) []*descriptor.FileDescriptorProto {
-	f, err := ioutil.ReadFile(filepath.Join("testdata", "fileset.pb"))
+func loadTestPb(t *testing.T, file string) []*descriptor.FileDescriptorProto {
+	f, err := ioutil.ReadFile(filepath.Join("testdata", file))
 	require.NoError(t, err, "unable to read testdata protobuf file")
 
 	set := new(descriptor.FileDescriptorSet)
@@ -27,7 +27,7 @@ func loadTestPb(t *testing.T) []*descriptor.FileDescriptorProto {
 func testGenerator(t *testing.T) *generator {
 	genReq := &plugin_go.CodeGeneratorRequest{
 		FileToGenerate: []string{"rubytypes.proto"},
-		ProtoFile:      loadTestPb(t),
+		ProtoFile:      loadTestPb(t, "fileset.pb"),
 	}
 	return newGenerator(genReq)
 }
@@ -80,6 +80,20 @@ func TestToRubyType(t *testing.T) {
 			t.Errorf("expected %v; actual %v", tt.expected, actual)
 		}
 	}
+
+	t.Run("ruby_package", func(t *testing.T) {
+		gen := newGenerator(
+			&plugin_go.CodeGeneratorRequest{
+				FileToGenerate: []string{"ruby_package.proto"},
+				ProtoFile:      loadTestPb(t, "ruby_package.pb"),
+			},
+		)
+
+		actual := gen.toRubyType(".twirp.rubytypes.request")
+		if actual != "The::API::Request" {
+			t.Errorf("expected %v; actual %v", "The::API::Request", actual)
+		}
+	})
 }
 
 func TestSplitRubyConstants(t *testing.T) {
