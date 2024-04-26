@@ -114,6 +114,7 @@ class ClientTest < Minitest::Test
     resp = c.make_hat(inches: 666)
     assert_nil resp.error
     refute_nil resp.data
+    refute_nil resp.headers
   end
 
   def test_proto_serialized_request_body
@@ -128,6 +129,7 @@ class ClientTest < Minitest::Test
     resp = c.make_hat(Example::Size.new(inches: 666))
     assert_nil resp.error
     refute_nil resp.data
+    refute_nil resp.headers
   end
 
   def test_proto_twirp_error
@@ -139,6 +141,7 @@ class ClientTest < Minitest::Test
     refute_nil resp.error
     assert_equal :internal, resp.error.code
     assert_equal "something went wrong", resp.error.msg
+    refute_nil resp.headers
   end
 
   def test_proto_intermediary_plain_error
@@ -153,6 +156,7 @@ class ClientTest < Minitest::Test
     assert_equal "true", resp.error.meta[:http_error_from_intermediary]
     assert_equal "Response is not JSON", resp.error.meta[:not_a_twirp_error_because]
     assert_equal "plain text error from proxy", resp.error.meta[:body]
+    refute_nil resp.headers
   end
 
   def test_proto_redirect_error
@@ -166,6 +170,7 @@ class ClientTest < Minitest::Test
     assert_equal "Unexpected HTTP Redirect from location=http://rainbow.com", resp.error.msg
     assert_equal "true", resp.error.meta[:http_error_from_intermediary]
     assert_equal "Redirects not allowed on Twirp requests", resp.error.meta[:not_a_twirp_error_because]
+    refute_nil resp.headers
   end
 
   def test_proto_missing_response_header
@@ -176,6 +181,7 @@ class ClientTest < Minitest::Test
     refute_nil resp.error
     assert_equal :internal, resp.error.code
     assert_equal 'Expected response Content-Type "application/protobuf" but found nil', resp.error.msg
+    refute_nil resp.headers
   end
 
   def test_error_with_invalid_code
@@ -187,6 +193,7 @@ class ClientTest < Minitest::Test
     refute_nil resp.error
     assert_equal :internal, resp.error.code
     assert_equal "Invalid Twirp error code: unicorn", resp.error.msg
+    refute_nil resp.headers
   end
 
   def test_error_with_no_code
@@ -201,6 +208,7 @@ class ClientTest < Minitest::Test
     assert_equal "true", resp.error.meta[:http_error_from_intermediary]
     assert_equal 'Response is JSON but it has no "code" attribute', resp.error.meta[:not_a_twirp_error_because]
     assert_equal '{"msg":"I have no code of honor"}', resp.error.meta[:body]
+    refute_nil resp.headers
   end
 
   # Call .rpc on JSON client

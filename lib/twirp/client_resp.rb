@@ -16,11 +16,13 @@ module Twirp
     attr_accessor :data
     attr_accessor :body
     attr_accessor :error
+    attr_accessor :headers
 
-    def initialize(data: nil, body: nil, error: nil)
+    def initialize(data: nil, body: nil, error: nil, headers: nil)
       @data = data
       @error = error
       @body = body
+      @headers = headers
     end
   end
 end

@@ -46,11 +46,11 @@ module Twirp
 
     def rpc_response_to_clientresp(resp)
       if resp.status != 200
-        return ClientResp.new(error: self.class.error_from_response(resp))
+        return ClientResp.new(error: self.class.error_from_response(resp), headers: resp.headers)
       end
 
       data = Encoding.decode_json(resp.body)
-      return ClientResp.new(data: data, body: resp.body)
+      return ClientResp.new(data: data, body: resp.body, headers: resp.headers)
     end
 
   end
