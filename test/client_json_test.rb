@@ -27,6 +27,7 @@ class ClientJSONTest < Minitest::Test
     assert_nil resp.error
     refute_nil resp.data
     assert_equal 3, resp.data["blah_resp"]
+    refute_nil resp.headers
   end
 
   def test_client_json_thennable
@@ -77,6 +78,7 @@ class ClientJSONTest < Minitest::Test
     refute_nil resp.error
     assert_equal :invalid_argument, resp.error.code
     assert_equal "dont like empty", resp.error.msg
+    refute_nil resp.headers
   end
 
   def test_client_bad_json_route
@@ -88,6 +90,7 @@ class ClientJSONTest < Minitest::Test
     assert_nil resp.data
     refute_nil resp.error
     assert_equal :bad_route, resp.error.code
+    refute_nil resp.headers
   end
 
 
