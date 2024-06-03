@@ -4,6 +4,7 @@ PATH
     twirp (1.10.0)
       faraday (< 3)
       google-protobuf (~> 3.0, >= 3.7.0)
+      rack (>= 2.2.3)
 
 GEM
   remote: https://rubygems.org/
@@ -13,7 +14,7 @@ GEM
       ruby2_keywords (>= 0.0.4)
     faraday-net_http (3.0.2)
     google-protobuf (3.21.12)
-    rack (2.2.3.1)
+    rack (2.2.8.1)
     ruby2_keywords (0.0.5)
     webrick (1.7.0)
 
