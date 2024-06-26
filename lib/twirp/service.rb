@@ -166,6 +166,23 @@ module Twirp
       end
 
       out = @handler.send(m, env[:input], env)
+
+      if env[:stream]
+        return out.to_enum.lazy.map do |item|
+          xxx = case item
+          when env[:output_class], Twirp::Error
+            item
+          when Hash
+            env[:output_class].new(item)
+          else
+            Twirp::Error.internal("Handler method #{m} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{item.class.name}.")
+          end
+
+          puts "call_handler, item: #{xxx}"
+          xxx
+        end
+      end
+
       case out
       when env[:output_class], Twirp::Error
         out
@@ -182,8 +199,20 @@ module Twirp
         @on_success.each{|hook| hook.call(env) }
 
         headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
-        resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
-        [200, headers, [resp_body]]
+        if env[:stream]
+          headers = env[:http_response_headers]
+          response = output.to_enum.lazy.map do |item|
+            encoded = Encoding.encode(item, env[:output_class], env[:content_type])
+            puts "success response: #{encoded}"
+            encoded
+          end
+          [200, headers, response]
+        else
+          headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
+          resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
+          [200, headers, [resp_body]]
+        end
+
 
       rescue => e
         return exception_response(e, env)
