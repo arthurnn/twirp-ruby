@@ -199,16 +199,15 @@ module Twirp
         @on_success.each{|hook| hook.call(env) }
 
         headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
+
         if env[:stream]
-          headers = env[:http_response_headers]
-          response = output.to_enum.lazy.map do |item|
-            encoded = Encoding.encode(item, env[:output_class], env[:content_type])
-            puts "success response: #{encoded}"
-            encoded
+          response = output.to_enum.lazy.flat_map do |item|
+            xxx = Encoding.encode_stream(item, env[:output_class], env[:content_type])
+            puts "success_response, item: #{xxx}"
+            xxx
           end
           [200, headers, response]
         else
-          headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
           resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
           [200, headers, [resp_body]]
         end

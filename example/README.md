@@ -48,6 +48,12 @@ curl -N --request POST \
   --data '{"name": "World"}'
 ```
 
+Use the ruby client:
+
+```sh
+bundle exec ruby streaming_response_client.rb
+```
+
 ### Run code generation
 
 Try to add a new field in `./hello_world/service.proto`, then run the generator code and see if the new field was properly added in the generated files.

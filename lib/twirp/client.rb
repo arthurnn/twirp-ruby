@@ -32,15 +32,19 @@ module Twirp
         package svclass.package_name
         service svclass.service_name
         svclass.rpcs.each do |rpc_method, rpcdef|
-          rpc rpc_method, rpcdef[:input_class], rpcdef[:output_class], ruby_method: rpcdef[:ruby_method]
+          rpc rpc_method, rpcdef[:input_class], rpcdef[:output_class], ruby_method: rpcdef[:ruby_method], stream: rpcdef[:stream]
         end
       end
 
       # Hook for ServiceDSL#rpc to define a new method client.<ruby_method>(input, req_opts).
       def rpc_define_method(rpcdef)
         unless method_defined? rpcdef[:ruby_method] # collision with existing rpc method
-          define_method rpcdef[:ruby_method] do |input, req_opts=nil|
-            rpc(rpcdef[:rpc_method], input, req_opts)
+          define_method rpcdef[:ruby_method] do |input, req_opts=nil, &block|
+            if rpcdef[:stream]
+              rpc(rpcdef[:rpc_method], input, req_opts, &block)
+            else
+              rpc(rpcdef[:rpc_method], input, req_opts)
+            end
           end
         end
       end
@@ -109,7 +113,7 @@ module Twirp
         status >= 300 && status <= 399
       end
 
-      def make_http_request(conn, service_full_name, rpc_method, content_type, req_opts, body)
+      def make_http_request(conn, service_full_name, rpc_method, content_type, req_opts, body, on_data_proc = nil)
         conn.post do |r|
           r.url "#{service_full_name}/#{rpc_method}"
           r.headers['Content-Type'] = content_type
@@ -120,6 +124,8 @@ module Twirp
               r.headers[k] = v
             end
           end
+
+          r.options.on_data = on_data_proc
         end
       end
 
@@ -148,7 +154,7 @@ module Twirp
     # or the attributes (Hash) to instantiate it. Returns a ClientResp instance with an instance of
     # output_class, or a Twirp::Error. The input and output classes are the ones configued with the rpc DSL.
     # If rpc_method was not defined with the rpc DSL then a response with a bad_route error is returned instead.
-    def rpc(rpc_method, input, req_opts=nil)
+    def rpc(rpc_method, input, req_opts=nil, &block)
       rpcdef = self.class.rpcs[rpc_method.to_s]
       if !rpcdef
         return ClientResp.new(error: Twirp::Error.bad_route("rpc not defined on this client"))
@@ -159,10 +165,49 @@ module Twirp
       input = rpcdef[:input_class].new(input) if input.is_a? Hash
       body = Encoding.encode(input, rpcdef[:input_class], content_type)
 
-      resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, content_type, req_opts, body)
+      if rpcdef[:stream]
+        # TODO: This method is messy.
+        buffer = +""
+        curr_size = nil
+        msgs = []
 
-      rpc_response_thennable(resp) do |resp|
-        rpc_response_to_clientresp(resp, content_type, rpcdef)
+
+        on_data_proc = Proc.new do |chunk, overall_received_bytes, env|
+          buffer << chunk
+          if curr_size.nil? && buffer.size >= 4
+            curr_size = Encoding.decode_stream_element_size(buffer[0..3])
+          end
+
+          # TODO: Make this more efficient.
+          if curr_size && buffer.size >= curr_size + 4
+            data = buffer[4..(4+curr_size)]
+            buffer = buffer[(4+curr_size)..]
+            curr_size = nil
+            msg = Encoding.decode(data, rpcdef[:output_class], content_type)
+            msgs << msg
+            block.call(msg)
+          end
+        end
+
+        resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, content_type, req_opts, body, on_data_proc)
+
+        rpc_response_thennable(resp) do |resp|
+          if resp.status != 200
+            return ClientResp.new(error: self.class.error_from_response(resp))
+          end
+
+          if resp.headers['Content-Type'] != content_type
+            return ClientResp.new(error: Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
+          end
+
+          return ClientResp.new(data: msgs, body: resp.body)
+        end
+      else
+        resp = self.class.make_http_request(@conn, @service_full_name, rpc_method, content_type, req_opts, body)
+
+        rpc_response_thennable(resp) do |resp|
+          rpc_response_to_clientresp(resp, content_type, rpcdef)
+        end
       end
     end
 
@@ -178,7 +223,7 @@ module Twirp
     # natively with twirp-ruby. For normal Faraday, this is a noop.
     def rpc_response_thennable(resp)
       return yield resp unless resp.respond_to?(:then)
-      
+
       resp.then do |resp|
         yield resp
       end
