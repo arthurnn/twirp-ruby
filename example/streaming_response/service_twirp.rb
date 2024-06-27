@@ -7,7 +7,7 @@ module Example
     class HelloWorldStreamingService < ::Twirp::Service
       package 'example.streaming_response'
       service 'HelloWorldStreaming'
-      rpc :Hello, HelloStreamingRequest, HelloStreamingResponse, :ruby_method => :hello, stream: true # TODO: `stream: true` is manually set, make it part of the codegen.
+      rpc :Hello, HelloStreamingRequest, HelloStreamingResponse, :ruby_method => :hello, stream: true
     end
 
     class HelloWorldStreamingClient < ::Twirp::Client

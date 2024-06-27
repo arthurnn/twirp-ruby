@@ -31,6 +31,23 @@ To send requests from Ruby code, run the hello_world client example:
 bundle exec ruby hello_world_client.rb
 ```
 
+#### Streaming example
+
+Start the server:
+
+```sh
+bundle exec puma streaming_response_server.ru
+```
+
+Send curl requests:
+
+```sh
+curl -N --request POST \
+  --url http://localhost:9292/twirp/example.streaming_response.HelloWorldStreaming/Hello \
+  --header 'Content-Type: application/json; strict=true' \
+  --data '{"name": "World"}'
+```
+
 ### Run code generation
 
 Try to add a new field in `./hello_world/service.proto`, then run the generator code and see if the new field was properly added in the generated files.
