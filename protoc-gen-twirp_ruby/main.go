@@ -118,8 +118,11 @@ func (g *generator) generateRubyCode(file *descriptor.FileDescriptorProto, pbFil
 			rpcName := method.GetName()
 			rpcInput := g.toRubyType(method.GetInputType())
 			rpcOutput := g.toRubyType(method.GetOutputType())
-			print(b, "%s  rpc :%s, %s, %s, :ruby_method => :%s",
-				indent, rpcName, rpcInput, rpcOutput, snakeCase(rpcName))
+			tpl := "%s  rpc :%s, %s, %s, :ruby_method => :%s"
+			if method.ServerStreaming != nil && *method.ServerStreaming {
+				tpl += ", stream: true"
+			}
+			print(b, tpl, indent, rpcName, rpcInput, rpcOutput, snakeCase(rpcName))
 		}
 		print(b, "%send", indent)
 		print(b, "")
