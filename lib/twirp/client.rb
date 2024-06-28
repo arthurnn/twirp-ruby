@@ -173,12 +173,12 @@ module Twirp
 
 
         on_data_proc = Proc.new do |chunk, overall_received_bytes, env|
+          # TODO: Make this more efficient.
           buffer << chunk
           if curr_size.nil? && buffer.size >= 4
             curr_size = Encoding.decode_stream_element_size(buffer[0..3])
           end
 
-          # TODO: Make this more efficient.
           if curr_size && buffer.size >= curr_size + 4
             data = buffer[4..(4+curr_size)]
             buffer = buffer[(4+curr_size)..]
@@ -193,6 +193,7 @@ module Twirp
 
         rpc_response_thennable(resp) do |resp|
           if resp.status != 200
+            # TODO: Should we yield these to the block instead?
             return ClientResp.new(error: self.class.error_from_response(resp))
           end
 

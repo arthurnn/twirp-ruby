@@ -29,6 +29,7 @@ class ServiceTest < Minitest::Test
       input_class: Example::Size,
       output_class: Example::Hat,
       ruby_method: :make_hat,
+      stream: nil,
     }, Example::Haberdasher.rpcs["MakeHat"])
   end
 

@@ -46,17 +46,12 @@ module Twirp
         bytes.unpack("L").first
       end
 
-      def encode_stream(msg_obj, msg_class, content_type)
-        encoded = encode(msg_obj, msg_class, content_type)
-
-        # TODO: Use the varint32 encoding that protobuf/gRPC allows for.
-        encoded_size = case content_type
-        when JSON, JSON_STRICT then encoded.bytesize.to_s
-        when PROTO then [encoded.bytesize].pack("L")
+      def encode_stream_element_size(bytes, content_type)
+        case content_type
+        when JSON, JSON_STRICT then bytes.bytesize.to_s
+        when PROTO then [bytes.bytesize].pack("L") # TODO: Use protobuf varint32 encoding.
         else raise ArgumentError.new("Invalid content_type")
         end
-
-        [encoded_size, encoded]
       end
 
       def encode_json(attrs)
