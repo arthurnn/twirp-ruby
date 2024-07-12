@@ -178,7 +178,7 @@ module Twirp
     # natively with twirp-ruby. For normal Faraday, this is a noop.
     def rpc_response_thennable(resp)
       return yield resp unless resp.respond_to?(:then)
-      
+
       resp.then do |resp|
         yield resp
       end
@@ -186,15 +186,18 @@ module Twirp
 
     def rpc_response_to_clientresp(resp, content_type, rpcdef)
       if resp.status != 200
-        return ClientResp.new(error: self.class.error_from_response(resp))
+        return ClientResp.new(error: self.class.error_from_response(resp), headers: resp.headers)
       end
 
       if resp.headers['Content-Type'] != content_type
-        return ClientResp.new(error: Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"))
+        return ClientResp.new(
+          error: Twirp::Error.internal("Expected response Content-Type #{content_type.inspect} but found #{resp.headers['Content-Type'].inspect}"),
+          headers: resp.headers
+        )
       end
 
       data = Encoding.decode(resp.body, rpcdef[:output_class], content_type)
-      return ClientResp.new(data: data, body: resp.body)
+      return ClientResp.new(data: data, body: resp.body, headers: resp.headers)
     end
 
   end
