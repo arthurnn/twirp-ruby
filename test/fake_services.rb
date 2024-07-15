@@ -5,17 +5,8 @@ require_relative '../lib/twirp'
 
 # Protobuf messages.
 # An example of the result of the protoc ruby code generator.
-Google::Protobuf::DescriptorPool.generated_pool.build do
-  add_message "example.Size" do
-    optional :inches, :int32, 1
-  end
-  add_message "example.Hat" do
-    optional :inches, :int32, 1
-    optional :color, :string, 2
-  end
-  add_message "example.Empty" do
-  end
-end
+descriptor_data = "\n\ntest.proto\x12\x07\x65xample\"\x16\n\x04Size\x12\x0e\n\x06inches\x18\x01 \x01(\x05\"$\n\x03Hat\x12\x0e\n\x06inches\x18\x01 \x01(\x05\x12\r\n\x05\x63olor\x18\x02 \x01(\t\"\x07\n\x05\x45mptyb\x06proto3"
+Google::Protobuf::DescriptorPool.generated_pool.add_serialized_file(descriptor_data)
 
 module Example
   Size = Google::Protobuf::DescriptorPool.generated_pool.lookup("example.Size").msgclass
@@ -56,11 +47,9 @@ class EmptyClient < Twirp::Client
 end
 
 # Foo message
-Google::Protobuf::DescriptorPool.generated_pool.build do
-  add_message "Foo" do
-    optional :foo, :string, 1
-  end
-end
+descriptor_data = "\n\tfoo.proto\"\x12\n\x03\x46oo\x12\x0b\n\x03\x66oo\x18\x01 \x01(\tb\x06proto3"
+Google::Protobuf::DescriptorPool.generated_pool.add_serialized_file(descriptor_data)
+
 Foo = Google::Protobuf::DescriptorPool.generated_pool.lookup("Foo").msgclass
 
 # Foo Client
