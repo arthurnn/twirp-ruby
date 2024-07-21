@@ -42,6 +42,18 @@ module Twirp
         end
       end
 
+      def decode_stream_element_size(bytes)
+        bytes.unpack("L").first
+      end
+
+      def encode_stream_element_size(bytes, content_type)
+        case content_type
+        when JSON, JSON_STRICT then bytes.bytesize.to_s
+        when PROTO then [bytes.bytesize].pack("L") # TODO: Use protobuf varint32 encoding.
+        else raise ArgumentError.new("Invalid content_type")
+        end
+      end
+
       def encode_json(attrs)
         ::JSON.generate(attrs)
       end

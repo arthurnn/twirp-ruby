@@ -1,0 +1,15 @@
+syntax = "proto3";
+package example.streaming_response;
+
+
+service HelloWorldStreaming {
+    rpc Hello(HelloStreamingRequest) returns (stream HelloStreamingResponse);
+}
+
+message HelloStreamingRequest {
+    string name = 1;
+}
+
+message HelloStreamingResponse {
+    string message = 1;
+}

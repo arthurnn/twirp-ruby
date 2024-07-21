@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package twirp.svc;
+
+service TwirpSvc {
+    rpc Hello(HelloSvcRequest) returns (HelloSvcResponse);
+    rpc HelloStream(HelloSvcRequest) returns (stream HelloSvcResponse);
+}
+
+message HelloSvcRequest {
+    string name = 1;
+}
+
+message HelloSvcResponse {
+    string message = 1;
+}

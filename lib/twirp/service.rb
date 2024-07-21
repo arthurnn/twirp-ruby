@@ -166,13 +166,24 @@ module Twirp
       end
 
       out = @handler.send(m, env[:input], env)
+
+      if env[:stream]
+        out.to_enum.lazy.map do |item|
+          map_handler_response(env, item)
+        end
+      else
+        map_handler_response(env, out)
+      end
+    end
+
+    def map_handler_response(env, out)
       case out
       when env[:output_class], Twirp::Error
         out
       when Hash
         env[:output_class].new(out)
       else
-        Twirp::Error.internal("Handler method #{m} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{out.class.name}.")
+        Twirp::Error.internal("Handler method #{env[:ruby_method]} expected to return one of #{env[:output_class].name}, Hash or Twirp::Error, but returned #{out.class.name}.")
       end
     end
 
@@ -181,10 +192,20 @@ module Twirp
         env[:output] = output
         @on_success.each{|hook| hook.call(env) }
 
-        headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
-        resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
-        [200, headers, [resp_body]]
+        content_type = env[:content_type]
+        headers = env[:http_response_headers].merge('Content-Type' => content_type)
 
+        if env[:stream]
+          response = output.to_enum.lazy.flat_map do |item|
+            encoded = Encoding.encode(item, env[:output_class], content_type)
+            encoded_size = Encoding.encode_stream_element_size(encoded, content_type)
+            [encoded_size, encoded]
+          end
+          [200, headers, response]
+        else
+          resp_body = Encoding.encode(output, env[:output_class], content_type)
+          [200, headers, [resp_body]]
+        end
       rescue => e
         return exception_response(e, env)
       end

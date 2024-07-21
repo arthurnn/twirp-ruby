@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -24,9 +25,17 @@ func loadTestPb(t *testing.T) []*descriptor.FileDescriptorProto {
 	return set.File
 }
 
-func testGenerator(t *testing.T) *generator {
+func testGeneratorRubyTypes(t *testing.T) *generator {
 	genReq := &plugin_go.CodeGeneratorRequest{
 		FileToGenerate: []string{"rubytypes.proto"},
+		ProtoFile:      loadTestPb(t),
+	}
+	return newGenerator(genReq)
+}
+
+func testGeneratorService(t *testing.T) *generator {
+	genReq := &plugin_go.CodeGeneratorRequest{
+		FileToGenerate: []string{"service.proto"},
 		ProtoFile:      loadTestPb(t),
 	}
 	return newGenerator(genReq)
@@ -71,7 +80,7 @@ func TestToRubyType(t *testing.T) {
 		{".google.protobuf.Empty", "Google::Protobuf::Empty"},
 	}
 
-	g := testGenerator(t)
+	g := testGeneratorRubyTypes(t)
 	g.findProtoFilesToGenerate()
 
 	for _, tt := range tests {
@@ -80,6 +89,21 @@ func TestToRubyType(t *testing.T) {
 			t.Errorf("expected %v; actual %v", tt.expected, actual)
 		}
 	}
+}
+
+func TestGenerateService(t *testing.T) {
+	g := testGeneratorService(t)
+
+	response := g.Generate()
+	require.NotNil(t, response, "Generator response is nil")
+
+	require.Empty(t, response.Error, "Generator response has errors")
+	require.Len(t, response.File, 1)
+
+	file := response.File[0]
+	expectedContent, err := os.ReadFile(filepath.Join("testdata", "service_twirp.rb"))
+	require.NoError(t, err, "unable to read testdata/service_twirp.rb")
+	require.Equal(t, *file.Content, string(expectedContent))
 }
 
 func TestSplitRubyConstants(t *testing.T) {

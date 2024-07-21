@@ -37,6 +37,7 @@ module Twirp
         input_class: input_class, # google/protobuf Message class to serialize the input (proto request).
         output_class: output_class, # google/protobuf Message class to serialize the output (proto response).
         ruby_method: opts[:ruby_method].to_sym, # method on the handler or client to handle this rpc requests.
+        stream: opts[:stream],
       }
 
       @rpcs ||= {}
