@@ -4,7 +4,7 @@ PATH
     twirp (1.10.0)
       faraday (< 3)
       google-protobuf (>= 3.25, < 5.a)
-      rack (>= 2.2.3)
+      rack (>= 2.2.3, < 3)
 
 GEM
   remote: https://rubygems.org/

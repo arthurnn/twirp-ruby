@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 1.9'
   spec.add_runtime_dependency 'google-protobuf', '>= 3.25', '< 5.a'
   spec.add_runtime_dependency 'faraday', '< 3' # for clients
-  spec.add_dependency 'rack', '>= 2.2.3' # for service server handling
+  spec.add_dependency 'rack', '>= 2.2.3', '< 3' # see https://github.com/arthurnn/twirp-ruby/issues/111
 
   spec.add_development_dependency 'bundler', '~> 2'
   spec.add_development_dependency 'minitest', '>= 5'
