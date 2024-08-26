@@ -2,4 +2,5 @@ source "https://rubygems.org"
 
 gem "rack"
 gem "webrick"
+gem "google-protobuf", "~> 3.x"
 gem "twirp", path: "../"
