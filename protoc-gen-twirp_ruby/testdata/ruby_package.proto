@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package twirp.rubytypes;
+
+option ruby_package = "The::API";
+
+message request {}
