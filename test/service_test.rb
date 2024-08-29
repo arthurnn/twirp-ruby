@@ -17,7 +17,7 @@ class ServiceTest < Minitest::Test
     twerr = Twirp::Error.invalid_argument('foo')
     resp = Twirp::Service.error_response(twerr)
     assert_equal 400, resp[0]
-    assert_equal 'application/json', resp[1]['Content-Type']
+    assert_equal 'application/json', resp[1]['content-type']
     assert_equal '{"code":"invalid_argument","msg":"foo"}', resp[2][0]
   end
 
@@ -60,7 +60,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
   end
 
@@ -69,7 +69,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/json; strict=true', headers['Content-Type']
+    assert_equal 'application/json; strict=true', headers['content-type']
     assert_equal({"inches" => 0, "color" => "white"}, JSON.parse(body[0]))
   end
 
@@ -78,7 +78,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({"inches" => 0, "color" => "white"}, JSON.parse(body[0]))
   end
 
@@ -87,7 +87,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/protobuf', headers['Content-Type']
+    assert_equal 'application/protobuf', headers['content-type']
     assert_equal Example::Hat.new(inches: 10, color: "white"), Example::Hat.decode(body[0])
   end
 
@@ -96,7 +96,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'bad_route',
       "msg"  => 'Invalid rpc method "MakeUnicorns"',
@@ -110,7 +110,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'bad_route',
       "msg"  => 'HTTP request method must be POST',
@@ -124,7 +124,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'bad_route',
       "msg"  => 'Unexpected Content-Type: "text/plain". Content-Type header must be one of ["application/json", "application/protobuf"]',
@@ -137,7 +137,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'bad_route',
       "msg"  => 'Invalid route. Expected format: POST {BaseURL}/example.Haberdasher/{Method}',
@@ -150,7 +150,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 404, status
-    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
+    assert_equal 'application/json', headers['content-type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
       "code" => 'bad_route',
       "msg"  => 'Invalid route. Expected format: POST {BaseURL}/example.Haberdasher/{Method}',
@@ -164,7 +164,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 400, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json: ' +
@@ -179,7 +179,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 400, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/protobuf: ' +
@@ -193,7 +193,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
   end
 
@@ -202,7 +202,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 200, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({"inches" => 10, "color" => "white"}, JSON.parse(body[0]))
   end
 
@@ -211,7 +211,7 @@ class ServiceTest < Minitest::Test
     status, headers, body = haberdasher_service.call(rack_env)
 
     assert_equal 400, status
-    assert_equal 'application/json', headers['Content-Type']
+    assert_equal 'application/json', headers['content-type']
     assert_equal({
       "code" => 'malformed',
       "msg"  => 'Invalid request body for rpc method "MakeHat" with Content-Type=application/json; strict=true: ' +
@@ -289,7 +289,7 @@ class ServiceTest < Minitest::Test
     rack_env = proto_req "/example.Haberdasher/MakeHat", Example::Size.new(inches: 666)
     status, headers, body = svc.call(rack_env)
     assert_equal 400, status
-    assert_equal 'application/json', headers['Content-Type'] # error responses are always JSON, even for Protobuf requests
+    assert_equal 'application/json', headers['content-type'] # error responses are always JSON, even for Protobuf requests
     assert_equal({
       "code" => 'invalid_argument',
       "msg" => "I don't like that size",
@@ -298,7 +298,7 @@ class ServiceTest < Minitest::Test
 
   def test_handler_method_can_set_response_headers_through_the_env
     svc = Example::Haberdasher.new(HaberdasherHandler.new do |size, env|
-      env[:http_response_headers]["Cache-Control"] = "public, max-age=60"
+      env[:http_response_headers]["cache-control"] = "public, max-age=60"
       {}
     end)
 
@@ -306,8 +306,8 @@ class ServiceTest < Minitest::Test
     status, headers, body = svc.call(rack_env)
 
     assert_equal 200, status
-    assert_equal "public, max-age=60", headers["Cache-Control"] # set by the handler
-    assert_equal "application/protobuf", headers["Content-Type"] # set by Twirp::Service
+    assert_equal "public, max-age=60", headers["cache-control"] # set by the handler
+    assert_equal "application/protobuf", headers['content-type'] # set by Twirp::Service
   end
 
   def test_handler_returns_invalid_type_nil
