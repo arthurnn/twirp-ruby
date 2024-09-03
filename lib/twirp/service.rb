@@ -32,7 +32,7 @@ module Twirp
       # Rack response with a Twirp::Error
       def error_response(twerr)
         status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
-        headers = {'content-type' => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
+        headers = {Rack::CONTENT_TYPE => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
         resp_body = Encoding.encode_json(twerr.to_h)
         [status, headers, [resp_body]]
       end
@@ -181,7 +181,7 @@ module Twirp
         env[:output] = output
         @on_success.each{|hook| hook.call(env) }
 
-        headers = env[:http_response_headers].merge('content-type' => env[:content_type])
+        headers = env[:http_response_headers].merge(Rack::CONTENT_TYPE => env[:content_type])
         resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
         [200, headers, [resp_body]]
 
