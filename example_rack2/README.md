@@ -1,6 +1,6 @@
 # Twirp HelloWorld Example for Rack 2
 
-This is identical to the other example, but tweaked to run under Rack 2 with `rackup`.
+This is identical to the other example, but tweaked to run under Rack 2.
 
 ### Run the example
 
