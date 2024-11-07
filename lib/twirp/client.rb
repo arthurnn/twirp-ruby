@@ -106,7 +106,7 @@ module Twirp
       end
 
       def is_http_redirect?(status)
-        status >= 300 && status <= 399
+        status && status >= 300 && status <= 399
       end
 
       def make_http_request(conn, service_full_name, rpc_method, content_type, req_opts, body)

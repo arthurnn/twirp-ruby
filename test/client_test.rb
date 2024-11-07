@@ -58,6 +58,17 @@ class ClientTest < Minitest::Test
     assert_equal num_mthds + 1, EmptyClient.instance_methods.size # new method added
   end
 
+  def test_is_http_redirect
+    assert Twirp::Client.is_http_redirect? 300
+    assert Twirp::Client.is_http_redirect? 301
+    assert Twirp::Client.is_http_redirect? 302
+    assert Twirp::Client.is_http_redirect? 399
+
+    refute Twirp::Client.is_http_redirect? 200
+    refute Twirp::Client.is_http_redirect? 400
+    refute Twirp::Client.is_http_redirect? nil
+  end
+
 
   # Call .rpc on Protobuf client
   # ----------------------------
