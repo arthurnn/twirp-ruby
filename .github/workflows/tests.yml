@@ -26,6 +26,8 @@ jobs:
           - "faraday-0"
           - "faraday-1"
           - "faraday-2"
+          - "rack-2"
+          - "rack-3"
 
     steps:
       - uses: actions/checkout@v4

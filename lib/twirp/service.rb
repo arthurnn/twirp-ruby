@@ -32,7 +32,7 @@ module Twirp
       # Rack response with a Twirp::Error
       def error_response(twerr)
         status = Twirp::ERROR_CODES_TO_HTTP_STATUS[twerr.code]
-        headers = {'Content-Type' => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
+        headers = {Rack::CONTENT_TYPE => Encoding::JSON} # Twirp errors are always JSON, even if the request was protobuf
         resp_body = Encoding.encode_json(twerr.to_h)
         [status, headers, [resp_body]]
       end
@@ -100,7 +100,7 @@ module Twirp
       input = env[:input_class].new(input) if input.is_a? Hash
       env[:input] = input
       env[:content_type] ||= Encoding::PROTO
-      env[:http_response_headers] = {}
+      env[:http_response_headers] = defined?(Rack::Headers) ? Rack::Headers.new : {}
       call_handler(env)
     end
 
@@ -138,7 +138,7 @@ module Twirp
       input = nil
       begin
         body_str = rack_request.body.read
-        rack_request.body.rewind # allow other middleware to read again (https://github.com/arthurnn/twirp-ruby/issues/50)
+        rack_request.body.rewind if rack_request.body.respond_to?(:rewind) # allow other middleware to read again (https://github.com/arthurnn/twirp-ruby/issues/50)
         input = Encoding.decode(body_str, env[:input_class], content_type)
       rescue => e
         error_msg = "Invalid request body for rpc method #{method_name.inspect} with Content-Type=#{content_type}"
@@ -149,7 +149,7 @@ module Twirp
       end
 
       env[:input] = input
-      env[:http_response_headers] = {}
+      env[:http_response_headers] = defined?(Rack::Headers) ? Rack::Headers.new : {}
       return
     end
 
@@ -181,7 +181,7 @@ module Twirp
         env[:output] = output
         @on_success.each{|hook| hook.call(env) }
 
-        headers = env[:http_response_headers].merge('Content-Type' => env[:content_type])
+        headers = env[:http_response_headers].merge(Rack::CONTENT_TYPE => env[:content_type])
         resp_body = Encoding.encode(output, env[:output_class], env[:content_type])
         [200, headers, [resp_body]]
 
