@@ -2,6 +2,13 @@
 
 This are the Ruby release notes, not the [Go toolchain ones](https://github.com/arthurnn/twirp-ruby/releases).
 
+## 1.13.0
+
+https://github.com/arthurnn/twirp-ruby/compare/v1.12.0...v1.13.0
+
+- [Rack 3.0 support](https://github.com/arthurnn/twirp-ruby/pull/124)
+- [Better handle nil response status in client](https://github.com/arthurnn/twirp-ruby/pull/127)
+
 ## 1.12.0
 
 https://github.com/arthurnn/twirp-ruby/compare/v1.10.0...v1.12.0
