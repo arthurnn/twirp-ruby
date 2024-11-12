@@ -13,7 +13,7 @@ GEM
       faraday-net_http (>= 2.0, < 3.1)
       ruby2_keywords (>= 0.0.4)
     faraday-net_http (3.0.2)
-    google-protobuf (3.25.4)
+    google-protobuf (3.25.5)
     rack (3.1.7)
     rackup (2.0.0)
       rack (>= 3)
@@ -25,7 +25,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  google-protobuf (~> 3.x)
+  google-protobuf (~> 3)
   rack (>= 3.0.0)
   rackup
   twirp!
