@@ -120,6 +120,10 @@ module Twirp
               r.headers[k] = v
             end
           end
+
+          if req_opts && req_opts[:timeout] && req_opts[:timeout].is_a?(Integer) && req_opts[:timeout] > 0
+            r.options.timeout = req_opts[:timeout]
+          end
         end
       end
 
