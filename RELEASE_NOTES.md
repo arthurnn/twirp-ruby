@@ -2,6 +2,11 @@
 
 This are the Ruby release notes, not the [Go toolchain ones](https://github.com/arthurnn/twirp-ruby/releases).
 
+## 1.14.0 - not released
+
+The only change was related to the Go toolchain, so we didn't publish a ruby release for this version:
+https://github.com/arthurnn/twirp-ruby/compare/v1.13.0...v1.14.0
+
 ## 1.13.0
 
 https://github.com/arthurnn/twirp-ruby/compare/v1.12.0...v1.13.0
@@ -22,7 +27,7 @@ https://github.com/arthurnn/twirp-ruby/compare/v1.10.0...v1.12.0
 No ruby release for this version, despite an existent tag.
 https://github.com/arthurnn/twirp-ruby/compare/v1.10.0...v1.11.0
 
-There was no ruby change for this version therefor not release, instead that mark the de-coupling of the Go toolchain with the ruby version.
+There was no ruby change for this version therefore not released, instead that mark the de-coupling of the Go toolchain with the ruby version.
 
 ## 1.10.0 and prior
 
