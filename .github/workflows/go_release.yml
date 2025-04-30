@@ -11,25 +11,23 @@ on:
         required: true
 
 jobs:
+  run-tests:
+    if: ${{ github.event.inputs.confirm == 'yes' }}
+    name: Run Tests
+    uses: ./.github/workflows/tests.yml
+
   release:
     if: ${{ github.event.inputs.confirm == 'yes' }}
     runs-on: ubuntu-latest
+    needs: run-tests
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v4
-        with:
-          go-version: '1.22'
 
       - name: Configure Git
         run: |
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-
-      - name: Run Go tests
-        run: go test ./protoc-gen-twirp_ruby/... ./internal/gen/typemap/...
 
       - name: Tag and push
         run: |
