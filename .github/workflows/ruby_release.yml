@@ -6,18 +6,13 @@ on:
       version:
         description: 'Ruby version to release (e.g., 1.13.0)'
         required: true
-      confirm:
-        description: 'Type "yes" to confirm release'
-        required: true
 
 jobs:
   run-tests:
-    if: ${{ github.event.inputs.confirm == 'yes' }}
     name: Run Tests
     uses: ./.github/workflows/tests.yml
 
   release:
-    if: ${{ github.event.inputs.confirm == 'yes' }}
     runs-on: ubuntu-latest
     needs: run-tests
     steps:
@@ -41,15 +36,15 @@ jobs:
       #   env:
       #     GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
 
-      # - name: Create GitHub Release
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     tag_name: ruby-v${{ github.event.inputs.version }}
-      #     name: Ruby v${{ github.event.inputs.version }}
-      #     body: |
-      #       Ruby Release v${{ github.event.inputs.version }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ruby-v${{ github.event.inputs.version }}
+          name: Ruby v${{ github.event.inputs.version }}
+          body: |
+            Ruby Release v${{ github.event.inputs.version }}
 
-      #       See RELEASE_NOTES.md for details.
-      #     draft: false
-      #   env:
-      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            See RELEASE_NOTES.md for details.
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
