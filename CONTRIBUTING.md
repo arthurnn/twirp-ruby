@@ -33,7 +33,6 @@ Both components can be released using GitHub Actions workflows.
 3. Go to the Actions tab in the GitHub repository and select the "Ruby Release" workflow.
 4. Click "Run workflow" and provide:
    * Version: The version number without the 'v' prefix (e.g., "1.13.0")
-   * Confirm: Type "yes" to confirm
 5. Click "Run workflow" to start the release process.
 
 The workflow will:
@@ -59,7 +58,6 @@ The workflow will:
 3. Go to the Actions tab in the GitHub repository and select the "Go Release" workflow.
 4. Click "Run workflow" and provide:
    * Version: The version number without the 'v' prefix (e.g., "1.13.0")
-   * Confirm: Type "yes" to confirm
 5. Click "Run workflow" to start the release process.
 
 The workflow will:
