@@ -1,0 +1,55 @@
+name: Go Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Go version to release (e.g., 1.13.0)'
+        required: true
+      confirm:
+        description: 'Type "yes" to confirm release'
+        required: true
+
+jobs:
+  release:
+    if: ${{ github.event.inputs.confirm == 'yes' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Configure Git
+        run: |
+          git config user.name "${GITHUB_ACTOR}"
+          git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Run Go tests
+        run: go test ./protoc-gen-twirp_ruby/... ./internal/gen/typemap/...
+
+      - name: Tag and push
+        run: |
+          # Create and push both tags
+          git tag go-v${{ github.event.inputs.version }}
+          git push origin go-v${{ github.event.inputs.version }}
+
+          # Also create standard Go module version tag
+          git tag v${{ github.event.inputs.version }}
+          git push origin v${{ github.event.inputs.version }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: go-v${{ github.event.inputs.version }}
+          name: Go v${{ github.event.inputs.version }}
+          body: |
+            Go Release v${{ github.event.inputs.version }}
+
+            See RELEASE_NOTES.md for details.
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
