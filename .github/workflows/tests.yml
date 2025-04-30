@@ -1,6 +1,7 @@
 name: Run Tests
 
 on:
+  workflow_call: {}  # This makes the workflow reusable
   push:
     branches: [ main ]
   pull_request:
