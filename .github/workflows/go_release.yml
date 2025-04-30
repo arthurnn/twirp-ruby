@@ -1,4 +1,5 @@
 name: Go Release
+run-name: "Release Go v${{ github.event.inputs.version }}"
 
 on:
   workflow_dispatch:
@@ -6,18 +7,13 @@ on:
       version:
         description: 'Go version to release (e.g., 1.13.0)'
         required: true
-      confirm:
-        description: 'Type "yes" to confirm release'
-        required: true
 
 jobs:
   run-tests:
-    if: ${{ github.event.inputs.confirm == 'yes' }}
     name: Run Tests
     uses: ./.github/workflows/tests.yml
 
   release:
-    if: ${{ github.event.inputs.confirm == 'yes' }}
     runs-on: ubuntu-latest
     needs: run-tests
     steps:
@@ -40,9 +36,9 @@ jobs:
           git push origin v${{ github.event.inputs.version }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: go-v${{ github.event.inputs.version }}
+          tag_name: v${{ github.event.inputs.version }}
           name: Go v${{ github.event.inputs.version }}
           body: |
             Go Release v${{ github.event.inputs.version }}
