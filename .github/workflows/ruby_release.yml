@@ -35,21 +35,21 @@ jobs:
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
-      - name: Build and publish gem
-        run: |
-          bundle exec rake release
-        env:
-          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+      # - name: Build and publish gem
+      #   run: |
+      #     bundle exec rake release
+      #   env:
+      #     GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ruby-v${{ github.event.inputs.version }}
-          name: Ruby v${{ github.event.inputs.version }}
-          body: |
-            Ruby Release v${{ github.event.inputs.version }}
+      # - name: Create GitHub Release
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     tag_name: ruby-v${{ github.event.inputs.version }}
+      #     name: Ruby v${{ github.event.inputs.version }}
+      #     body: |
+      #       Ruby Release v${{ github.event.inputs.version }}
 
-            See RELEASE_NOTES.md for details.
-          draft: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #       See RELEASE_NOTES.md for details.
+      #     draft: false
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
