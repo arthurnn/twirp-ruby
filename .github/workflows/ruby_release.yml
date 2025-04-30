@@ -38,6 +38,7 @@ jobs:
           name: Ruby v${{ github.event.inputs.version }}
           body: |
             Ruby Release v${{ github.event.inputs.version }}
+            https://rubygems.org/gems/twirp/versions/${{ github.event.inputs.version }}
 
             See RELEASE_NOTES.md for details.
           draft: false
