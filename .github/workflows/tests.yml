@@ -48,5 +48,8 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Ensure go.mod / go.sum remain tidy
+        run: go mod tidy -diff
+      
       - name: Run Go tests
         run: go test ./protoc-gen-twirp_ruby/... ./internal/gen/typemap/...
