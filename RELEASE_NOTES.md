@@ -8,11 +8,17 @@ Releases are tagged in git with the `ruby-` and `go-` prefixes. To follow [Go mo
 
 ## Go
 
+### 1.14.1
+
+https://github.com/arthurnn/twirp-ruby/compare/go-v1.14.0...go-v1.14.1
+
+Bumping version to fix tag
+
 ### 1.14.0
 
-- Update `google.golang.org/protobuf`(v1.36.6) and drop `github.com/golang/protobuf` dependency [#131](https://github.com/arthurnn/twirp-ruby/pull/131)
+https://github.com/arthurnn/twirp-ruby/compare/v1.13.0...go-v1.14.0
 
-Full Changelog: https://github.com/arthurnn/twirp-ruby/compare/v1.13.0...go-v1.14.0
+- Update `google.golang.org/protobuf`(v1.36.6) and drop `github.com/golang/protobuf` dependency [#131](https://github.com/arthurnn/twirp-ruby/pull/131)
 
 ### 1.13.0 & 1.12.0 & 1.11.0
 
