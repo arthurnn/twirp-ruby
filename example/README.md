@@ -37,12 +37,22 @@ Try to add a new field in `./hello_world/service.proto`, then run the generator 
 
 Make sure you have the [protobuf compiler](https://github.com/golang/protobuf) (version 3+).
 
+MacOS:
+
+```bash
+brew install protobuf
+```
+
 Install the twirp plugin with go:
+
 ```sh
-go get -u github.com/arthurnn/twirp-ruby/protoc-gen-twirp_ruby
+mkdir -p $GOPATH/src/github.com/arthurnn
+ln -s ~/src/twirp-ruby $GOPATH/src/github.com/arthurnn/twirp-ruby
+go install github.com/arthurnn/twirp-ruby/protoc-gen-twirp_ruby
 ```
 
 From the `/example` folder, run the generator command:
+
 ```sh
 protoc --proto_path=. ./hello_world/service.proto --ruby_out=. --twirp_ruby_out=.
 ```

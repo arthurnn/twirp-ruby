@@ -1,7 +1,7 @@
 PATH
   remote: ..
   specs:
-    twirp (1.12.0)
+    twirp (1.13.1)
       faraday (< 3)
       google-protobuf (>= 3.25, < 5.a)
       rack (>= 2.2.3)
