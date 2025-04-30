@@ -15,8 +15,8 @@ Features and bugfixes are managed through Github's Issues and Pull Requests. Con
 
 The Ruby and Go components now have separate release processes. They are no longer coupled in terms of versioning.
 
-- Ruby library follows [Semantic Versioning (SemVer)](https://semver.org/), using git tags like `ruby-v1.13.0`. To find the releases go to [rubygems](https://rubygems.org/gems/twirp).
-- Go library follows [Go module versioning conventions](https://go.dev/doc/modules/version-numbers). The releases are documented in the [releases](https://github.com/arthurnn/twirp-ruby/releases) page.
+- Ruby library follows [Semantic Versioning (SemVer)](https://semver.org/), using tags like `ruby-v1.13.0`
+- Go library follows [Go module versioning conventions](https://go.dev/doc/modules/version-numbers)
 
 ### Ruby Release Process
 
@@ -46,7 +46,7 @@ The Ruby and Go components now have separate release processes. They are no long
 
 ### Go Release Process
 
-1. Update the version in `protoc-gen-twirp_ruby/version.go`.
+1. Update the version in `protoc-gen-twirp_ruby/version.go` following semantic versioning.
 2. Run Go tests to ensure everything works:
    ```
    cd protoc-gen-twirp_ruby
@@ -65,6 +65,15 @@ The Ruby and Go components now have separate release processes. They are no long
    git tag go-vX.Y.Z
    git push origin go-vX.Y.Z
    ```
+
+   Additionally, create and push a simple `vX.Y.Z` tag (without the `go-` prefix) to ensure Go modules compatibility:
+   ```
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+   This standard tag format is necessary for proper Go module versioning and allows other Go projects to import specific versions.
+
 6. Create a new release on GitHub:
    * Go to https://github.com/arthurnn/twirp-ruby/releases
    * Draft a new release using the tag `go-vX.Y.Z`
