@@ -70,11 +70,6 @@ The workflow will:
 
 6. Verify the release is visible on the [GitHub Releases page](https://github.com/arthurnn/twirp-ruby/releases)
 
-## GitHub Actions Workflow Setup Requirements
-
-For the release workflows to function properly, you need to set up these GitHub repository secrets:
-
-* `RUBYGEMS_API_KEY`: Your RubyGems API key for publishing the gem
 
 ## General Notes
 
