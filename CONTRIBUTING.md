@@ -23,26 +23,26 @@ Both components can be released using GitHub Actions workflows.
 ### Ruby Release Process
 
 1. Update the version in [`lib/twirp/version.rb`](lib/twirp/version.rb) following semantic versioning.
-2. Run `bundle install` to update the `Gemfile.lock` file with the new version.
-3. Commit and push these changes to the main branch:
+2. Commit and push these changes to the main branch:
 
    ```bash
    git commit -am "Bump Ruby version to vX.Y.Z"
    git push origin main
    ```
 
-4. Go to the Actions tab in the GitHub repository and select the "Ruby Release" workflow.
-5. Click "Run workflow" and provide:
+3. Go to the Actions tab in the GitHub repository and select the "Ruby Release" workflow.
+4. Click "Run workflow" and provide:
    * Version: The version number without the 'v' prefix (e.g., "1.13.0")
    * Confirm: Type "yes" to confirm
-6. Click "Run workflow" to start the release process.
+5. Click "Run workflow" to start the release process.
 
 The workflow will:
 
 * Run all Ruby tests
-* Build and publish the gem to RubyGems.org
 * Create a Git tag with format `ruby-vX.Y.Z`
 * Create a GitHub Release
+
+6. Run `bundle exec rake release` locally to push the gem
 
 7. Verify the gem is available at [https://rubygems.org/gems/twirp](https://rubygems.org/gems/twirp)
 
