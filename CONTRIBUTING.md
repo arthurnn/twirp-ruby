@@ -2,72 +2,84 @@
 
 ## Issues and Pull Requests
 
-Features and bugfixes are managed through Github's Issues and Pull Requests. Contributions are welcome and once approved, they are merged into master.
+Features and bugfixes are managed through [GitHub's Issues and Pull Requests](https://github.com/arthurnn/twirp-ruby/issues). Contributions are welcome and once approved, they are merged into master.
 
 ## Run tests and example code
 
- * Install gems: `bundle install`
- * Run Ruby tests: `rake`
- * Run Go tests (test code generation): `cd protoc-gen-twirp_ruby` then `go test ./...`
- * Run example code (see [example/README.md](example/README.md)).
+* Install gems: `bundle install`
+* Run Ruby tests: `rake`
+* Run Go tests (test code generation): `cd protoc-gen-twirp_ruby` then `go test ./...`
+* Run example code (see [example/README.md](example/README.md)).
 
 ## Release Process
 
 The Ruby and Go components now have separate release processes. They are no longer coupled in terms of versioning.
 
-- Ruby library follows [Semantic Versioning (SemVer)](https://semver.org/), using tags like `ruby-v1.13.0`
-- Go library follows [Go module versioning conventions](https://go.dev/doc/modules/version-numbers)
+* Ruby library follows [Semantic Versioning (SemVer)](https://semver.org/), using tags like `ruby-v1.13.0`
+* Go library follows [Go module versioning conventions](https://go.dev/doc/modules/version-numbers)
 
 ### Ruby Release Process
 
-1. Update the version in `lib/twirp/version.rb` following semantic versioning.
+1. Update the version in [`lib/twirp/version.rb`](lib/twirp/version.rb) following semantic versioning.
 2. Run `bundle install` to update the `Gemfile.lock` file with the new version.
 3. Run all Ruby tests to ensure everything works:
-   ```
+
+   ```bash
    rake
    ```
+
 4. Make sure examples are working and updated if needed:
-   * Check examples in the `example/` and `example_rack2/` directories
+   * Check examples in the [`example/`](example/) and [`example_rack2/`](example_rack2/) directories
    * Update any example code or documentation as needed
 5. Commit changes and push to main branch:
-   ```
+
+   ```bash
    git commit -am "Bump Ruby version to vX.Y.Z"
    git push origin main
    ```
+
 6. Build and publish the gem:
-   ```
+
+   ```bash
    rake release
    ```
+
    This will:
    * Create a git tag with the format `ruby-vX.Y.Z`
    * Build the gem
-   * Push the gem to RubyGems.org (the canonical source for Ruby versions)
-7. Verify the gem is available at https://rubygems.org/gems/twirp
+   * Push the gem to [RubyGems.org](https://rubygems.org/gems/twirp) (the canonical source for Ruby versions)
+7. Verify the gem is available at [https://rubygems.org/gems/twirp](https://rubygems.org/gems/twirp)
 
 ### Go Release Process
 
-1. Update the version in `protoc-gen-twirp_ruby/version.go` following semantic versioning.
+1. Update the version in [`protoc-gen-twirp_ruby/version.go`](protoc-gen-twirp_ruby/version.go) following semantic versioning.
 2. Run Go tests to ensure everything works:
-   ```
+
+   ```bash
    cd protoc-gen-twirp_ruby
    go test ./...
    cd ../internal/gen/typemap
    go test ./...
    ```
+
 3. Regenerate any example code if needed.
 4. Commit changes and push to main branch:
-   ```
+
+   ```bash
    git commit -am "Bump Go version to vX.Y.Z"
    git push origin main
    ```
+
 5. Create a git tag for the Go release:
-   ```
+
+   ```bash
    git tag go-vX.Y.Z
    git push origin go-vX.Y.Z
    ```
 
    Additionally, create and push a simple `vX.Y.Z` tag (without the `go-` prefix) to ensure Go modules compatibility:
-   ```
+
+   ```bash
    git tag vX.Y.Z
    git push origin vX.Y.Z
    ```
@@ -75,7 +87,7 @@ The Ruby and Go components now have separate release processes. They are no long
    This standard tag format is necessary for proper Go module versioning and allows other Go projects to import specific versions.
 
 6. Create a new release on GitHub:
-   * Go to https://github.com/arthurnn/twirp-ruby/releases
+   * Go to [GitHub Releases](https://github.com/arthurnn/twirp-ruby/releases)
    * Draft a new release using the tag `go-vX.Y.Z`
    * Add release notes detailing the changes in this version
    * Publish the release
@@ -85,4 +97,4 @@ The Ruby and Go components now have separate release processes. They are no long
 
 * The two components can be released independently according to their own development schedules
 * Always test both Ruby and Go components before releasing either one
-* Update the RELEASE_NOTES.md file with significant changes for both Ruby and Go releases
+* Update the [`RELEASE_NOTES.md`](RELEASE_NOTES.md) file with significant changes for both Ruby and Go releases
