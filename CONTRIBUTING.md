@@ -8,7 +8,7 @@ Features and bugfixes are managed through [GitHub's Issues and Pull Requests](ht
 
 * Install gems: `bundle install`
 * Run Ruby tests: `rake`
-* Run Go tests (test code generation): `cd protoc-gen-twirp_ruby` then `go test ./...`
+* Run Go tests (test code generation): `go test ./protoc-gen-twirp_ruby/... ./internal/gen/typemap/...`
 * Run example code (see [example/README.md](example/README.md)).
 
 ## Release Process
@@ -18,83 +18,67 @@ The Ruby and Go components now have separate release processes. They are no long
 * Ruby library follows [Semantic Versioning (SemVer)](https://semver.org/), using tags like `ruby-v1.13.0`
 * Go library follows [Go module versioning conventions](https://go.dev/doc/modules/version-numbers)
 
+Both components can be released using GitHub Actions workflows.
+
 ### Ruby Release Process
 
 1. Update the version in [`lib/twirp/version.rb`](lib/twirp/version.rb) following semantic versioning.
 2. Run `bundle install` to update the `Gemfile.lock` file with the new version.
-3. Run all Ruby tests to ensure everything works:
-
-   ```bash
-   rake
-   ```
-
-4. Make sure examples are working and updated if needed:
-   * Check examples in the [`example/`](example/) and [`example_rack2/`](example_rack2/) directories
-   * Update any example code or documentation as needed
-5. Commit changes and push to main branch:
+3. Commit and push these changes to the main branch:
 
    ```bash
    git commit -am "Bump Ruby version to vX.Y.Z"
    git push origin main
    ```
 
-6. Build and publish the gem:
+4. Go to the Actions tab in the GitHub repository and select the "Ruby Release" workflow.
+5. Click "Run workflow" and provide:
+   * Version: The version number without the 'v' prefix (e.g., "1.13.0")
+   * Confirm: Type "yes" to confirm
+6. Click "Run workflow" to start the release process.
 
-   ```bash
-   rake release
-   ```
+The workflow will:
 
-   This will:
-   * Create a git tag with the format `ruby-vX.Y.Z`
-   * Build the gem
-   * Push the gem to [RubyGems.org](https://rubygems.org/gems/twirp) (the canonical source for Ruby versions)
+* Run all Ruby tests
+* Build and publish the gem to RubyGems.org
+* Create a Git tag with format `ruby-vX.Y.Z`
+* Create a GitHub Release
+
 7. Verify the gem is available at [https://rubygems.org/gems/twirp](https://rubygems.org/gems/twirp)
 
 ### Go Release Process
 
 1. Update the version in [`protoc-gen-twirp_ruby/version.go`](protoc-gen-twirp_ruby/version.go) following semantic versioning.
-2. Run Go tests to ensure everything works:
-
-   ```bash
-   cd protoc-gen-twirp_ruby
-   go test ./...
-   cd ../internal/gen/typemap
-   go test ./...
-   ```
-
-3. Regenerate any example code if needed.
-4. Commit changes and push to main branch:
+2. Commit and push these changes to the main branch:
 
    ```bash
    git commit -am "Bump Go version to vX.Y.Z"
    git push origin main
    ```
 
-5. Create a git tag for the Go release:
+3. Go to the Actions tab in the GitHub repository and select the "Go Release" workflow.
+4. Click "Run workflow" and provide:
+   * Version: The version number without the 'v' prefix (e.g., "1.13.0")
+   * Confirm: Type "yes" to confirm
+5. Click "Run workflow" to start the release process.
 
-   ```bash
-   git tag go-vX.Y.Z
-   git push origin go-vX.Y.Z
-   ```
+The workflow will:
 
-   Additionally, create and push a simple `vX.Y.Z` tag (without the `go-` prefix) to ensure Go modules compatibility:
+* Run all Go tests
+* Create Git tags with formats `go-vX.Y.Z` and `vX.Y.Z` (for Go modules compatibility)
+* Create a GitHub Release
 
-   ```bash
-   git tag vX.Y.Z
-   git push origin vX.Y.Z
-   ```
+6. Verify the release is visible on the [GitHub Releases page](https://github.com/arthurnn/twirp-ruby/releases)
 
-   This standard tag format is necessary for proper Go module versioning and allows other Go projects to import specific versions.
+## GitHub Actions Workflow Setup Requirements
 
-6. Create a new release on GitHub:
-   * Go to [GitHub Releases](https://github.com/arthurnn/twirp-ruby/releases)
-   * Draft a new release using the tag `go-vX.Y.Z`
-   * Add release notes detailing the changes in this version
-   * Publish the release
-7. The GitHub releases page is the canonical source for Go version releases.
+For the release workflows to function properly, you need to set up these GitHub repository secrets:
+
+* `RUBYGEMS_API_KEY`: Your RubyGems API key for publishing the gem
 
 ## General Notes
 
 * The two components can be released independently according to their own development schedules
 * Always test both Ruby and Go components before releasing either one
 * Update the [`RELEASE_NOTES.md`](RELEASE_NOTES.md) file with significant changes for both Ruby and Go releases
+* The GitHub workflows automate most of the release process but still require manual version updates
