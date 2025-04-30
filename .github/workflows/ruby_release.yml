@@ -31,12 +31,6 @@ jobs:
           git config user.name "${GITHUB_ACTOR}"
           git config user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
-      - name: Build and publish gem
-        run: |
-          bundle exec rake release
-        env:
-          GEM_HOST_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
