@@ -234,7 +234,9 @@ func (g *generator) toRubyType(protoType string) string {
 	}
 
 	var prefix string
-	if pkg := g.fileToGoPackageName[def.File]; pkg != "" {
+	if pkg := def.File.GetOptions().GetRubyPackage(); pkg != "" {
+		prefix = strings.Join(splitRubyConstants(pkg), "::") + "::"
+	} else if pkg := g.fileToGoPackageName[def.File]; pkg != "" {
 		prefix = strings.Join(splitRubyConstants(pkg), "::") + "::"
 	}
 
