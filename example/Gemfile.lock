@@ -19,7 +19,7 @@ GEM
       rack (>= 3)
       webrick
     ruby2_keywords (0.0.5)
-    webrick (1.7.0)
+    webrick (1.8.2)
 
 PLATFORMS
   ruby
