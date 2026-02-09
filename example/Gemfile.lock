@@ -9,16 +9,22 @@ PATH
 GEM
   remote: https://rubygems.org/
   specs:
-    faraday (2.7.2)
-      faraday-net_http (>= 2.0, < 3.1)
-      ruby2_keywords (>= 0.0.4)
-    faraday-net_http (3.0.2)
+    faraday (2.14.1)
+      faraday-net_http (>= 2.0, < 3.5)
+      json
+      logger
+    faraday-net_http (3.4.2)
+      net-http (~> 0.5)
     google-protobuf (3.25.5)
+    json (2.18.1)
+    logger (1.7.0)
+    net-http (0.9.1)
+      uri (>= 0.11.1)
     rack (3.1.7)
     rackup (2.0.0)
       rack (>= 3)
       webrick
-    ruby2_keywords (0.0.5)
+    uri (1.1.1)
     webrick (1.7.0)
 
 PLATFORMS
